@@ -1,7 +1,5 @@
 import time
 import requests
-import asyncio
-import threading
 import json
 
 def load_config():
