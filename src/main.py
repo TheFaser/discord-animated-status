@@ -8,14 +8,13 @@ def load_config():
     return data
 
 def changer():
-    while True:
-        for frame in data["frames"]:
-            p_headers = {"Authorization": token, "Content-Type": "application/json", "method": "PATCH"}
-            s_params = {"custom_status": {"text": frame, "emoji_id": None, "emoji_name": None, "expires_at": None}}
-            p_params = json.dumps(s_params)
-            req = requests.patch("https://discordapp.com/api/v6/users/@me/settings", headers=p_headers, data=p_params)
-            print("Switched frame to: %s" % frame)
-            time.sleep(3)
+    for frame in data["frames"]:
+        p_headers = {"Authorization": token, "Content-Type": "application/json", "method": "PATCH"}
+        s_params = {"custom_status": {"text": frame, "emoji_id": None, "emoji_name": None, "expires_at": None}}
+        p_params = json.dumps(s_params)
+        req = requests.patch("https://discordapp.com/api/v6/users/@me/settings", headers=p_headers, data=p_params)
+        print("Switched frame to: %s" % frame)
+        time.sleep(3)
 
 data = load_config()
 token = data["token"]
