@@ -1,8 +1,0 @@
-{
-    "token": "XXX",
-    "frames": [
-      "This is frame 1",
-      "This is frame 2",
-      "This is frame 3"
-    ]
-}
