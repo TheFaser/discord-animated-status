@@ -1,20 +1,22 @@
 # Information
 Changes your discord status every 3 seconds to the next frame. Basically creating an animated status.
 # Setting up
-Go to `config.txt`. You'll see this JSON table:
+Go to `config.json`. You'll see this JSON table:
 ```
 {
-    "token": "XXX",
-    "frames": [
-      "This is frame 1",
-      "This is frame 2",
-      "This is frame 3"
-    ]
+  "token": "XXX",
+  "frames": [
+    {"str":"#curtime#", "emoji":"\u23F0"},
+    {"str":"#curtime#", "emoji":"\u23F0"},
+    {"str":"#curtime#", "emoji":"\u23F0"},
+    {"str":"#curtime#", "emoji":"\u23F0"}
+  ]
 }
 ```
 Change the token field value to your user auth token.
-You can add and remove frames by putting more strings in the `frames` table, and separating them by a `,`
+You can add and remove frames by putting more frames in the `frames` table, and separating them by a `,`
 The last frame string should not have a `,` at the end of it.
+`str` stays for the status text, and `emoji` stands for the status emoji.
 # Getting user auth token
 Open up your discord and press `Ctrl+Shift+I`
 Then, open up the `Network` tab in the popped up window.
