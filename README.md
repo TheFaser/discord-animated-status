@@ -16,7 +16,7 @@ Go to `config.json`. You'll see this JSON table:
 Change the token field value to your user auth token.
 You can add and remove frames by putting more frames in the `frames` table, and separating them by a `,`
 The last frame string should not have a `,` at the end of it.
-`str` stays for the status text, and `emoji` stands for the status emoji.
+`str` stands for the status text, and `emoji` stands for the status emoji.
 # Getting user auth token
 Open up your discord and press `Ctrl+Shift+I`
 Then, open up the `Network` tab in the popped up window.
