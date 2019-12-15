@@ -1,7 +1,7 @@
 # Information
 Changes your discord status every 3 seconds to the next frame. Basically creating an animated status.
 # Setting up
-Go to `config.txt`. You'l see this JSON table:
+Go to `config.txt`. You'll see this JSON table:
 ```
 {
     "token": "XXX",
