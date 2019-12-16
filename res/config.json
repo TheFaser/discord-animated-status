@@ -1,7 +1,7 @@
 {
   "token": "XXX",
   "frames": [
-    {"str":"This is the first frame!", "emoji":"\u23F0"},
     {"str":"The time is: #curtime#", "emoji":"\u23F0"}
-  ]
+  ],
+  "speed": 3
 }
