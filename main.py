@@ -1,5 +1,6 @@
 
-__author__ = "https://github.com/eternalfrenzy | https://vk.com/eternalfrenzy"
+__author__  = "https://github.com/eternalfrenzy | https://vk.com/eternalfrenzy"
+__version__ = 1.2
 
 import time
 import requests
@@ -18,7 +19,7 @@ def changer():
         p_params = json.dumps({"custom_status": {"text": frame["str"], "emoji_id": None, "emoji_name": frame["emoji"], "expires_at": None}})
         requests.patch("https://discordapp.com/api/v6/users/@me/settings", headers=p_headers, data=p_params)
         print("Switched frame to: %s" % frame["str"])
-        time.sleep(3)
+        time.sleep(data["speed"])
 
 def entry():
     while True:
