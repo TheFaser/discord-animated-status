@@ -8,7 +8,8 @@ Go to `config.json`. You'll see this JSON table:
   "frames": [
     {"str":"This is the first frame!", "emoji":"\u23F0"},
     {"str":"The time is: #curtime#", "emoji":"\u23F0"}
-  ]
+  ],
+  "speed": 3
 }
 ```
 Change the token field value to your user auth token.
