@@ -6,8 +6,8 @@ Go to `config.json`. You'll see this JSON table:
 {
   "token": "XXX",
   "frames": [
-    {"str":"This is the first frame!", "emoji":"\u23F0"},
-    {"str":"The time is: #curtime#", "emoji":"\u23F0"}
+    {"str":"The time is: #curtime#", "emoji":"\u23F0"},
+    {"str":"My server count: #servcount#", "emoji":"🤡"}
   ],
   "speed": 3
 }
