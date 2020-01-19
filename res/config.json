@@ -1,8 +1,0 @@
-{
-  "token": "XXX",
-  "frames": [
-    {"str":"The time is: #curtime#", "emoji":"\u23F0"},
-    {"str":"My server count: #servcount#", "emoji":"💻"}
-  ],
-  "speed": 3
-}
