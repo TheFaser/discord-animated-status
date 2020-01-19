@@ -745,6 +745,12 @@ class App(QWidget):
     def tray_click_checking(self, reason):
         if reason == QSystemTrayIcon.Trigger:
             self.show()
+            self.showMaximized()
+            
+            qtRectangle = self.frameGeometry()
+            centerPoint = QDesktopWidget().availableGeometry().center()
+            qtRectangle.moveCenter(centerPoint)
+            self.move(qtRectangle.topLeft())
 
 class custom_signal(QObject):
     """Custom PyQT signal class."""
