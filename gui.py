@@ -568,15 +568,15 @@ class App(QWidget):
         if self.config["frames"] != []:
             warning=QMessageBox()
             warning.setWindowTitle("Внимание")
-            warning.setText("Вы уверены что хотите безвозвратно\nочистить список кадров?") # <<<<<<<<<<<<<<<<<<<<<<<<
+            warning.setText(self.lang_manager.get_string("clear_warning"))
             warning.setIcon(warning.Warning)
             warning.setWindowIcon(self.icon)
             warning.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
 
             yes=warning.button(QMessageBox.Yes)
-            yes.setText("Да") # <<<<<<<<<<<<<<<<<<<<<<<
+            yes.setText(self.lang_manager.get_string("yes"))
             no=warning.button(QMessageBox.Cancel)
-            no.setText("Отмена") # <<<<<<<<<<<<<<<<<<<<<<
+            no.setText(self.lang_manager.get_string("cancel"))
 
             answer=warning.exec()
 
