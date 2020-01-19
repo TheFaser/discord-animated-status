@@ -451,8 +451,8 @@ class App(QWidget):
         if "tray_notifications" not in self.config:
             self.config.update({"tray_notifications": True})
 
-        with open("config.json", "w") as cfg_file:
-            json.dump(self.config, cfg_file, indent=4)
+        with open("config.json", "w", encoding="utf-8") as cfg_file:
+            json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
 
     def edit_frame(self):
         self.status_edit_window = QDialog()
@@ -509,8 +509,8 @@ class App(QWidget):
 
         self.frames_list_edit.currentItem().setText(new_item)
         self.frames_list_edit.row(self.frames_list_edit.currentItem())
-        with open("config.json", "w") as cfg_file:
-            json.dump(self.config, cfg_file, indent=4)
+        with open("config.json", "w", encoding="utf-8") as cfg_file:
+            json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
         self.status_edit_window.close()
 
     def frames_list_edit_filling(self):
@@ -539,8 +539,8 @@ class App(QWidget):
             self.frames_list_edit_filling()
             self.frames_list_edit.setCurrentRow(currentRow - 1)
 
-            with open("config.json", "w") as cfg_file:
-                json.dump(self.config, cfg_file, indent=4)
+            with open("config.json", "w", encoding="utf-8") as cfg_file:
+                json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
         except:
             pass
     
@@ -558,8 +558,8 @@ class App(QWidget):
             self.frames_list_edit_filling()
             self.frames_list_edit.setCurrentRow(currentRow + 1)
 
-            with open("config.json", "w") as cfg_file:
-                json.dump(self.config, cfg_file, indent=4)
+            with open("config.json", "w", encoding="utf-8") as cfg_file:
+                json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
         except:
             pass
 
@@ -583,8 +583,8 @@ class App(QWidget):
             if answer==QMessageBox.Yes:
                 self.frames_list_edit.clear()
                 self.config["frames"] = []
-                with open("config.json", "w") as cfg_file:
-                    json.dump(self.config, cfg_file, indent=4)
+                with open("config.json", "w", encoding="utf-8") as cfg_file:
+                    json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
 
     def add_frame(self):
         self.status_edit_window = QDialog()
@@ -675,8 +675,8 @@ class App(QWidget):
             new_item = emoji+" | "+text
 
         self.frames_list_edit.addItem(new_item)
-        with open("config.json", "w") as cfg_file:
-            json.dump(self.config, cfg_file, indent=4)
+        with open("config.json", "w", encoding="utf-8") as cfg_file:
+            json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
         self.status_edit_window.close()
 
     def remove_frame(self):
@@ -686,8 +686,8 @@ class App(QWidget):
         
             self.frames_list_edit_filling()
 
-            with open("config.json", "w") as cfg_file:
-                json.dump(self.config, cfg_file, indent=4)
+            with open("config.json", "w", encoding="utf-8") as cfg_file:
+                json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
 
             if len(self.config["frames"]) == currentRow:
                 currentRow -= 1
@@ -698,26 +698,26 @@ class App(QWidget):
 
     def speed_change(self):
         self.config["delay"] = self.speed_edit.value()
-        with open("config.json", "w") as cfg_file:
-            json.dump(self.config, cfg_file, indent=4)
+        with open("config.json", "w", encoding="utf-8") as cfg_file:
+            json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
 
     def token_editing(self):
         self.config["token"] = self.token_input.text()
         self.token_input.setToolTip(self.lang_manager.get_string("your_token_tooltip")+self.config["token"])
-        with open("config.json", "w") as cfg_file:
-            json.dump(self.config, cfg_file, indent=4)
+        with open("config.json", "w", encoding="utf-8") as cfg_file:
+            json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
 
     def resizeEvent(self, event):
         size = (self.size().width(), self.size().height())
         try:
             if size == (400, 280):
                 self.config["hide_token_input"] = False
-                with open("config.json", "w") as cfg_file:
-                    json.dump(self.config, cfg_file, indent=4)
+                with open("config.json", "w", encoding="utf-8") as cfg_file:
+                    json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
             elif size == (400, 250):
                 self.config["hide_token_input"] = True
-                with open("config.json", "w") as cfg_file:
-                    json.dump(self.config, cfg_file, indent=4)
+                with open("config.json", "w", encoding="utf-8") as cfg_file:
+                    json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
         except:
             pass
 
