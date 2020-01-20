@@ -3,8 +3,9 @@ from required import json, logging, requests, datetime, api_url, time
 class Core(object):
     """Back-End class."""
 
-    def __init__(self):
+    def __init__(self, gui):
         self.config = {}
+        self.gui = gui
         self.stop_thread = False
 
     def config_load(self):
@@ -15,17 +16,17 @@ class Core(object):
         except:
             self.config = {"token": "", "frames": [], "delay": 3, "hide_token_input": False, "language": "en"}
 
-        #try:
-            #self.token_input.setText(str(self.config["token"]))
-            #self.token_input.setToolTip(self.lang_manager.get_string("your_token_tooltip")+str(self.config["token"]))
-        #except KeyError:
-            #self.config.update({"token": ""})
+        try:
+            self.gui.token_input.setText(str(self.config["token"]))
+            self.gui.token_input.setToolTip(self.gui.lang_manager.get_string("your_token_tooltip")+str(self.config["token"]))
+        except KeyError:
+            self.config.update({"token": ""})
 
         if "frames" not in self.config:
             self.config.update({"frames": []})
         if type(self.config["frames"]) != list:
             self.config["frames"] = []
-        #self.frames_list_edit_filling()
+        self.gui.frames_list_edit_filling()
 
         try:
             if self.config["delay"] < 1:
@@ -37,10 +38,10 @@ class Core(object):
             self.config["delay"] = 3
 
         try:
-            if self.config["language"] in self.lang_manager.supported_langs:
-                self.lang_manager.selected_lang = self.config["language"]
+            if self.config["language"] in self.gui.lang_manager.supported_langs:
+                self.gui.lang_manager.selected_lang = self.config["language"]
             else:
-                self.lang_manager.selected_lang = "en"
+                self.gui.lang_manager.selected_lang = "en"
         except KeyError:
             self.config.update({"language": "en"})
         except:
@@ -48,14 +49,14 @@ class Core(object):
 
         try:
             if self.config["hide_token_input"] == True:
-                #self.resize(400, 250)
+                self.gui.resize(400, 250)
                 pass
             else:
-                #self.resize(400, 280)
+                self.gui.resize(400, 280)
                 pass
         except:
             self.config.update({"hide_token_input": False})
-            #self.resize(400, 280)
+            self.gui.resize(400, 280)
 
             if "tray_notifications" not in self.config:
                 self.config.update({"tray_notifications": True})
@@ -76,8 +77,8 @@ class Core(object):
         except (KeyError, TypeError, requests.exceptions.RequestException) as e:
             frame = {"str": "Error", "emoji": ""}
             logging.error("Failed to parse frame: %s", e)
-            #self.current_info = "%s: %s" % (self.lang_manager.get_string("parse_error"), e)
-            #self.custom_signal.infoUpdated.emit()
+            self.gui.current_info = "%s: %s" % (self.gui.lang_manager.get_string("parse_error"), e)
+            self.gui.custom_signal.infoUpdated.emit()
 
     def auth(self, method):
         """Creates and returns a header for discord API using current token."""
@@ -94,8 +95,8 @@ class Core(object):
                 json.dump(self.config, cfg_file, ensure_ascii=False, indent=4)
         except:
             logging.error("Failed to save config.")
-            #self.current_info = self.lang_manager.get_string("save_error")
-            #self.custom_signal.infoUpdated.emit()
+            self.gui.current_info = self.gui.lang_manager.get_string("save_error")
+            self.gui.custom_signal.infoUpdated.emit()
 
     def run_animated_status(self):
         """Animated status thread target."""
@@ -108,29 +109,29 @@ class Core(object):
                     req = requests.patch(api_url+"/users/@me/settings", headers=self.auth("patch"), data=p_params)
                     if req.status_code == 200:
                         pass
-                        #if frame["emoji"] == "":
-                            #self.current_frame = frame["str"]
-                        #else:
-                            #self.current_frame = frame["emoji"] + " | " + frame["str"]
-                        #self.custom_signal.frameUpdated.emit()
-                        #if self.current_info != "":
-                            #self.current_info = ""
-                            #self.custom_signal.infoUpdated.emit()
+                        if frame["emoji"] == "":
+                            self.gui.current_frame = frame["str"]
+                        else:
+                            self.gui.current_frame = frame["emoji"] + " | " + frame["str"]
+                        self.gui.custom_signal.frameUpdated.emit()
+                        if self.gui.current_info != "":
+                            self.gui.current_info = ""
+                            self.gui.custom_signal.infoUpdated.emit()
                     elif req.status_code == 429:  # Never create request overflow
                         logging.error("Discord XRate exceeded. Sleeping for 30s to let Discord rest.")
-                        #self.current_info = self.lang_manager.get_string("xrate_exceeded")
-                        #self.custom_signal.infoUpdated.emit()
-                        #if self.core.config["tray_notifications"]:
-                            #self.tray_icon.showMessage("Discord Animated Status", self.lang_manager.get_string("xrate_exceeded"), self.icon, msecs=1000)
+                        self.gui.current_info = self.gui.lang_manager.get_string("xrate_exceeded")
+                        self.gui.custom_signal.infoUpdated.emit()
+                        if self.config["tray_notifications"]:
+                            self.gui.tray_icon.showMessage("Discord Animated Status", self.gui.lang_manager.get_string("xrate_exceeded"), self.icon, msecs=1000)
                         if self.stop_thread == True:
                             return
                         time.sleep(30)
                 except requests.exceptions.RequestException as e:
                     logging.error("A request error occured: %s", e)
-                    #self.current_info = "%s%s" % (self.lang_manager.get_string("request_error"), e)
-                    #self.custom_signal.infoUpdated.emit()
-                    #if self.config["tray_notifications"]:
-                        #self.tray_icon.showMessage("Discord Animated Status", "%s%s" % (self.lang_manager.get_string("request_error"), e), self.icon, msecs=1000)
+                    self.gui.current_info = "%s%s" % (self.gui.lang_manager.get_string("request_error"), e)
+                    self.gui.custom_signal.infoUpdated.emit()
+                    if self.config["tray_notifications"]:
+                        self.gui.tray_icon.showMessage("Discord Animated Status", "%s%s" % (self.gui.lang_manager.get_string("request_error"), e), self.gui.icon, msecs=1000)
                     continue
                 if self.stop_thread == True:
                     return

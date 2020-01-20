@@ -12,7 +12,7 @@ class App(QWidget):
     def __init__(self):
         super().__init__()
         self.lang_manager = LanguageManager()
-        self.core = Core()
+        self.core = Core(self)
         self.mainWindow()
 
     def restart(self):
