@@ -2,7 +2,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from required import *
+from required import logging, sys, os, Thread, ascii_chars, authors_m, version_m
+from core import Core
 from lang import LanguageManager
 
 class App(QWidget):
@@ -11,12 +12,13 @@ class App(QWidget):
     def __init__(self):
         super().__init__()
         self.lang_manager = LanguageManager()
+        self.core = Core()
         self.mainWindow()
 
     def restart(self):
         """Restarts the program."""
         logging.info("Forced restart. Restarting...")
-        self.config_save()
+        self.core.config_save()
         self.tray_icon.hide()
         scr = sys.executable
         os.execl(scr, scr, *sys.argv)
@@ -25,7 +27,7 @@ class App(QWidget):
         """Method factory for menu bar language selection."""
         def f():
             self.lang_manager.selected_lang = lang
-            self.config["language"] = self.lang_manager.selected_lang
+            self.core.config["language"] = self.lang_manager.selected_lang
             self.restart()
         return f
 
@@ -92,9 +94,9 @@ class App(QWidget):
 
         self.menu_bar_config = self.menu_bar.addMenu(self.lang_manager.get_string("config"))
         self.menu_bar_config_load = QAction(self.lang_manager.get_string("load"), self)
-        self.menu_bar_config_load.triggered.connect(self.config_load)
+        self.menu_bar_config_load.triggered.connect(self.core.config_load)
         self.menu_bar_config_save = QAction(self.lang_manager.get_string("save"), self)
-        self.menu_bar_config_save.triggered.connect(self.config_save)
+        self.menu_bar_config_save.triggered.connect(self.core.config_save)
         self.menu_bar_config.addAction(self.menu_bar_config_save)
         self.menu_bar_config.addAction(self.menu_bar_config_load)
 
@@ -233,7 +235,7 @@ class App(QWidget):
 
         self.stop_btn.setEnabled(False)
 
-        self.config_load()
+        self.core.config_load()
 
         self.run_btn.clicked.connect(self.run)
         self.stop_btn.clicked.connect(self.stop)
@@ -260,7 +262,7 @@ class App(QWidget):
     def run(self):
         """Run animated status."""
         logging.info("Starting animated status...")
-        if self.config["frames"] == []:
+        if self.core.config["frames"] == []:
             self.show()
             logging.error("Failed to run animated status: Frame list is empty.")
             error = QMessageBox()
@@ -269,7 +271,7 @@ class App(QWidget):
             error.setText(self.lang_manager.get_string("frame_list_empty"))
             error.setIcon(error.Warning)
             error.exec_()
-        elif self.config["token"] == "":
+        elif self.core.config["token"] == "":
             self.show()
             logging.error("Failed to run animated status: Token is empty.")
             error = QMessageBox()
@@ -278,7 +280,7 @@ class App(QWidget):
             error.setText(self.lang_manager.get_string("input_token"))
             error.setIcon(error.Warning)
             error.exec_()
-            if self.config["hide_token_input"]:
+            if self.core.config["hide_token_input"]:
                 error = QMessageBox()
                 error.setWindowTitle(self.lang_manager.get_string("error"))
                 error.setWindowIcon(self.icon)
@@ -286,7 +288,7 @@ class App(QWidget):
                 error.setIcon(error.Warning)
                 error.exec_()
         else:
-            for char in self.config["token"]:
+            for char in self.core.config["token"]:
                 if char not in ascii_chars:
                     logging.error("Failed to run animated status: Forbidden chars in token.")
                     error = QMessageBox()
@@ -304,48 +306,10 @@ class App(QWidget):
                 self.run_stop_animated_status.setText(self.lang_manager.get_string("stop"))
                 self.run_stop_animated_status.triggered.connect(self.stop)
 
-                self.discord_status_updating_thread = Thread(target=self.run_animated_status, daemon=True)
+                self.discord_status_updating_thread = Thread(target=self.core.run_animated_status, daemon=True)
                 self.discord_status_updating_thread.start()
 
                 logging.info("Started animated status.")
-
-    def run_animated_status(self):
-        """Animated status thread target."""
-        while True:
-            for item in self.config["frames"]:
-                frame = item.copy()
-                self.parse_frame(frame)
-                p_params = json.dumps({"custom_status": {"text": frame["str"], "emoji_id": None, "emoji_name": frame["emoji"], "expires_at": None}})
-                try:
-                    req = requests.patch(api_url+"/users/@me/settings", headers=self.auth("patch"), data=p_params)
-                    if req.status_code == 200:
-                        if frame["emoji"] == "":
-                            self.current_frame = frame["str"]
-                        else:
-                            self.current_frame = frame["emoji"] + " | " + frame["str"]
-                        self.custom_signal.frameUpdated.emit()
-                        if self.current_info != "":
-                            self.current_info = ""
-                            self.custom_signal.infoUpdated.emit()
-                    elif req.status_code == 429:  # Never create request overflow
-                        logging.error("Discord XRate exceeded. Sleeping for 30s to let Discord rest.")
-                        self.current_info = self.lang_manager.get_string("xrate_exceeded")
-                        self.custom_signal.infoUpdated.emit()
-                        if self.config["tray_notifications"]:
-                            self.tray_icon.showMessage("Discord Animated Status", self.lang_manager.get_string("xrate_exceeded"), self.icon, msecs=1000)
-                        if self.stop_thread == True:
-                            return
-                        time.sleep(30)
-                except requests.exceptions.RequestException as e:
-                    logging.error("A request error occured: %s", e)
-                    self.current_info = "%s%s" % (self.lang_manager.get_string("request_error"), e)
-                    self.custom_signal.infoUpdated.emit()
-                    if self.config["tray_notifications"]:
-                        self.tray_icon.showMessage("Discord Animated Status", "%s%s" % (self.lang_manager.get_string("request_error"), e), self.icon, msecs=1000)
-                    continue
-                if self.stop_thread == True:
-                    return
-                time.sleep(self.config["delay"])
 
     def stop(self):
         """Stop animated status."""
@@ -365,94 +329,6 @@ class App(QWidget):
         self.stop_thread = False
 
         logging.info("Stopped animated status.")
-
-    def parse_frame(self, frame):
-        """Parse animated status frame."""
-        now = datetime.now()
-        try:
-            mydata = requests.get(api_url+"/users/@me", headers=self.auth("get")).json(encoding="utf-8")
-            frame["str"] = frame["str"].replace( "#curtime#", datetime.strftime(now, "%H:%M"))
-            servcount = len(requests.get(api_url+"/users/@me/guilds", headers=self.auth("get")).json(encoding="utf-8"))
-            frame["str"] = frame["str"].replace("#servcount#", str(servcount))
-            frame["str"] = frame["str"].replace("#name#", mydata["username"])
-            frame["str"] = frame["str"].replace("#id#", mydata["discriminator"])
-        except (KeyError, TypeError, requests.exceptions.RequestException) as e:
-            frame = {"str": "Error", "emoji": ""}
-            logging.error("Failed to parse frame: %s", e)
-            self.current_info = "%s: %s" % (self.lang_manager.get_string("parse_error"), e)
-            self.custom_signal.infoUpdated.emit()
-
-    def auth(self, method):
-        """Creates and returns a header for discord API using current token."""
-        try:
-            return {"Authorization": self.config["token"], "Content-Type": "application/json", "method": method.upper()}
-        except (KeyError, TypeError) as e:
-            logging.error("Failed to create authorization header: %s", e)
-            return None
-
-    def config_save(self):
-        """Saves the settings to a config file."""
-        try:
-            with open("config.json", "w", encoding="utf-8") as cfg_file:
-                json.dump(self.config, cfg_file, ensure_ascii=False, indent=4)
-        except:
-            logging.error("Failed to save config.")
-            self.current_info = self.lang_manager.get_string("save_error")
-            self.custom_signal.infoUpdated.emit()
-
-    def config_load(self):
-        """Loads the settings from a config file."""
-        try:
-            with open("config.json", encoding="utf-8") as cfg_file:
-                self.config = json.load(cfg_file)
-        except:
-            self.config = {"token": "", "frames": [], "delay": 3, "hide_token_input": False, "language": "en"}
-
-        try:
-            self.token_input.setText(str(self.config["token"]))
-            self.token_input.setToolTip(self.lang_manager.get_string("your_token_tooltip")+str(self.config["token"]))
-        except KeyError:
-            self.config.update({"token": ""})
-
-        if "frames" not in self.config:
-            self.config.update({"frames": []})
-        if type(self.config["frames"]) != list:
-            self.config["frames"] = []
-        self.frames_list_edit_filling()
-
-        try:
-            if self.config["delay"] < 1:
-                self.config["delay"] = 3
-            self.speed_edit.setValue(self.config["delay"])
-        except KeyError:
-            self.config.update({"delay": 3})
-        except:
-            self.config["delay"] = 3
-
-        try:
-            if self.config["language"] in self.lang_manager.supported_langs:
-                self.lang_manager.selected_lang = self.config["language"]
-            else:
-                self.lang_manager.selected_lang = "en"
-        except KeyError:
-            self.config.update({"language": "en"})
-        except:
-            self.config["language"] = "en"
-
-        try:
-            if self.config["hide_token_input"] == True:
-                self.resize(400, 250)
-            else:
-                self.resize(400, 280)
-        except:
-            self.config.update({"hide_token_input": False})
-            self.resize(400, 280)
-
-        if "tray_notifications" not in self.config:
-            self.config.update({"tray_notifications": True})
-
-        with open("config.json", "w", encoding="utf-8") as cfg_file:
-            json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
 
     def edit_frame(self):
         self.status_edit_window = QDialog()
@@ -482,8 +358,8 @@ class App(QWidget):
         add_btn.move(10, 71)
         add_btn.setFont(QFont(self.btnFontFamily, 10))
 
-        self.emoji_edit.setText(self.config["frames"][self.frames_list_edit.currentRow()]["emoji"])
-        self.text_edit.setText(self.config["frames"][self.frames_list_edit.currentRow()]["str"])
+        self.emoji_edit.setText(self.core.config["frames"][self.frames_list_edit.currentRow()]["emoji"])
+        self.text_edit.setText(self.core.config["frames"][self.frames_list_edit.currentRow()]["str"])
 
         add_btn.clicked.connect(self.save_frame)
         self.status_edit_window.exec_()
@@ -491,7 +367,7 @@ class App(QWidget):
     def save_frame(self):
         text = self.text_edit.text().strip()
         emoji = self.emoji_edit.text().strip()
-        self.config["frames"][self.frames_list_edit.currentRow()] = {"str": text, "emoji": emoji}
+        self.core.config["frames"][self.frames_list_edit.currentRow()] = {"str": text, "emoji": emoji}
         if text == "":
             error = QMessageBox()
             error.setWindowTitle(self.lang_manager.get_string(self.lang_manager.get_string("error")))
@@ -509,13 +385,12 @@ class App(QWidget):
 
         self.frames_list_edit.currentItem().setText(new_item)
         self.frames_list_edit.row(self.frames_list_edit.currentItem())
-        with open("config.json", "w", encoding="utf-8") as cfg_file:
-            json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
+        self.core.config_save()
         self.status_edit_window.close()
 
     def frames_list_edit_filling(self):
         self.frames_list_edit.clear()
-        for frame in self.config["frames"]:
+        for frame in self.core.config["frames"]:
             try:
                 if frame["emoji"] == "":
                     new_item = frame["str"]
@@ -523,49 +398,47 @@ class App(QWidget):
                     new_item = frame["emoji"] + " | " + frame["str"]
                 self.frames_list_edit.addItem(new_item)
             except:
-                del self.config["frames"][self.config["frames"].index(frame)]
+                del self.core.config["frames"][self.core.config["frames"].index(frame)]
 
     def moveUp_frame(self):
         try:
             currentRow = self.frames_list_edit.currentRow()
-            currentItem = self.config["frames"][currentRow]
+            currentItem = self.core.config["frames"][currentRow]
 
             if currentRow == 0:
                 return
 
-            del self.config["frames"][currentRow]
-            self.config["frames"].insert(currentRow - 1, currentItem)
+            del self.core.config["frames"][currentRow]
+            self.core.config["frames"].insert(currentRow - 1, currentItem)
 
             self.frames_list_edit_filling()
             self.frames_list_edit.setCurrentRow(currentRow - 1)
 
-            with open("config.json", "w", encoding="utf-8") as cfg_file:
-                json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
+            self.core.config_save()
         except:
             pass
     
     def moveDown_frame(self):
         try:
             currentRow = self.frames_list_edit.currentRow()
-            currentItem = self.config["frames"][currentRow]
+            currentItem = self.core.config["frames"][currentRow]
 
             if currentRow == self.frames_list_edit.count() - 1:
                 return
 
-            del self.config["frames"][currentRow]
-            self.config["frames"].insert(currentRow + 1, currentItem)
+            del self.core.config["frames"][currentRow]
+            self.core.config["frames"].insert(currentRow + 1, currentItem)
 
             self.frames_list_edit_filling()
             self.frames_list_edit.setCurrentRow(currentRow + 1)
 
-            with open("config.json", "w", encoding="utf-8") as cfg_file:
-                json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
+            self.core.config_save()
         except:
             pass
 
     def clear_frames_list(self):
         """Clear all animated status frames."""
-        if self.config["frames"] != []:
+        if self.core.config["frames"] != []:
             warning=QMessageBox()
             warning.setWindowTitle("Внимание")
             warning.setText(self.lang_manager.get_string("clear_warning"))
@@ -582,9 +455,8 @@ class App(QWidget):
 
             if answer==QMessageBox.Yes:
                 self.frames_list_edit.clear()
-                self.config["frames"] = []
-                with open("config.json", "w", encoding="utf-8") as cfg_file:
-                    json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
+                self.core.config["frames"] = []
+                self.core.config_save()
 
     def add_frame(self):
         self.status_edit_window = QDialog()
@@ -657,7 +529,7 @@ class App(QWidget):
     def new_frame(self):
         text = self.text_edit.text().strip()
         emoji = self.emoji_edit.text().strip()
-        self.config["frames"].append({"str": text, "emoji": emoji})
+        self.core.config["frames"].append({"str": text, "emoji": emoji})
         if text == "":
             logging.error("Failed to add new frame: Text field was empty.")
             error = QMessageBox()
@@ -675,21 +547,19 @@ class App(QWidget):
             new_item = emoji+" | "+text
 
         self.frames_list_edit.addItem(new_item)
-        with open("config.json", "w", encoding="utf-8") as cfg_file:
-            json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
+        self.core.config_save()
         self.status_edit_window.close()
 
     def remove_frame(self):
         try:
             currentRow=self.frames_list_edit.currentRow()
-            del self.config["frames"][currentRow]
+            del self.core.config["frames"][currentRow]
         
             self.frames_list_edit_filling()
 
-            with open("config.json", "w", encoding="utf-8") as cfg_file:
-                json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
+            self.core.config_save()
 
-            if len(self.config["frames"]) == currentRow:
+            if len(self.core.config["frames"]) == currentRow:
                 currentRow -= 1
             self.frames_list_edit.setCurrentRow(currentRow)
         except:
@@ -697,27 +567,23 @@ class App(QWidget):
             pass
 
     def speed_change(self):
-        self.config["delay"] = self.speed_edit.value()
-        with open("config.json", "w", encoding="utf-8") as cfg_file:
-            json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
+        self.core.config["delay"] = self.speed_edit.value()
+        self.core.config_save()
 
     def token_editing(self):
-        self.config["token"] = self.token_input.text()
-        self.token_input.setToolTip(self.lang_manager.get_string("your_token_tooltip")+self.config["token"])
-        with open("config.json", "w", encoding="utf-8") as cfg_file:
-            json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
+        self.core.config["token"] = self.token_input.text()
+        self.token_input.setToolTip(self.lang_manager.get_string("your_token_tooltip")+self.core.config["token"])
+        self.core.config_save()
 
     def resizeEvent(self, event):
         size = (self.size().width(), self.size().height())
         try:
             if size == (400, 280):
-                self.config["hide_token_input"] = False
-                with open("config.json", "w", encoding="utf-8") as cfg_file:
-                    json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
+                self.core.config["hide_token_input"] = False
+                self.core.config_save()
             elif size == (400, 250):
-                self.config["hide_token_input"] = True
-                with open("config.json", "w", encoding="utf-8") as cfg_file:
-                    json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
+                self.core.config["hide_token_input"] = True
+                self.core.config_save()
         except:
             pass
 

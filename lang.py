@@ -1,6 +1,6 @@
 from required import json, logging
 
-class LanguageManager:
+class LanguageManager(object):
     """A class responsible for localization."""
 
     def __init__(self):
