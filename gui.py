@@ -230,7 +230,7 @@ class App(QWidget):
 
         self.show()
 
-        self.stop_thread = False
+        self.core.stop_thread = False
         self.current_info = ""
 
         self.stop_btn.setEnabled(False)
