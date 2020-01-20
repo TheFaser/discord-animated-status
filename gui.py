@@ -314,7 +314,7 @@ class App(QWidget):
     def stop(self):
         """Stop animated status."""
         logging.info("Stopping animated status...")
-        self.stop_thread = True
+        self.core.stop_thread = True
         self.stop_btn.setEnabled(False)
         self.run_stop_animated_status.setEnabled(False)
         self.info_screen.setText(self.lang_manager.get_string("stopping"))
@@ -326,7 +326,7 @@ class App(QWidget):
         self.discord_status_updating_thread.join()
 
         self.custom_signal.threadStopped.emit()
-        self.stop_thread = False
+        self.core.stop_thread = False
 
         logging.info("Stopped animated status.")
 
