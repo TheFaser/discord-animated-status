@@ -292,7 +292,7 @@ class App(QWidget):
                     error = QMessageBox()
                     error.setWindowTitle(self.lang_manager.get_string("error"))
                     error.setWindowIcon(self.icon)
-                    error.setText("В токене обнаружены запрещённые символы.\nУдалите их.") # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                    error.setText(self.lang_manager.get_string("token_invalid"))
                     error.setIcon(error.Warning)
                     error.exec_()
                     break
