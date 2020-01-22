@@ -5,7 +5,7 @@ class LanguageManager(object):
 
     def __init__(self):
         self.selected_lang = "en"
-        self.supported_langs = ["en", "ru"]
+        self.supported_langs = []
         self.text_data = {}
 
         self.init_text_data()
@@ -58,3 +58,5 @@ class LanguageManager(object):
         """Initialize text data for language manager. Called once upon init."""
         with open("res/lang.json", "r+", encoding="utf-8") as lang_file:
             self.text_data = json.load(lang_file)
+            for k in self.text_data.keys():
+                self.supported_langs.append(k)
