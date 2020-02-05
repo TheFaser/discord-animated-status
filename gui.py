@@ -222,6 +222,7 @@ class App(QWidget):
         self.token_input.resize(378, 20)
         self.token_input.move(10, 252)
         self.token_input.setAlignment(Qt.AlignCenter)
+        self.token_input.setPlaceholderText(self.lang_manager.get_string("your_token"))
         self.token_input.setToolTip(self.lang_manager.get_string("your_token"))
 
         # ++ END TOKEN INPUT SECTION
