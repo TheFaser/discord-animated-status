@@ -25,10 +25,42 @@ class App(QWidget):
 
     def make_lang_callback(self, lang):
         """Method factory for menu bar language selection."""
+        def execute_choice(choice):
+            if choice == "restart":
+                self.lang_manager.selected_lang = lang
+                self.core.config["language"] = self.lang_manager.selected_lang
+                self.restart()
+            elif choice == "later":
+                self.core.config["language"] = lang
+                self.core.config_save()
+                self.language_change_confirm_window.close()
+        
         def f():
-            self.lang_manager.selected_lang = lang
-            self.core.config["language"] = self.lang_manager.selected_lang
-            self.restart()
+            self.language_change_confirm_window = QDialog()
+            self.language_change_confirm_window.setWindowTitle(self.lang_manager.get_string("language"))
+            self.language_change_confirm_window.setWindowIcon(self.icon)
+            self.language_change_confirm_window.setMinimumSize(QSize(190, 90))
+            self.language_change_confirm_window.setMaximumSize(QSize(190, 90))
+            self.language_change_confirm_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+
+            lbl = QLabel(self.lang_manager.get_string("restart_for_language_change"), self.language_change_confirm_window)
+            lbl.move(10, 10)
+
+            restart_btn = QPushButton(self.lang_manager.get_string("restart"), self.language_change_confirm_window)
+            restart_btn.resize(100, 25)
+            restart_btn.move(10, 55)
+            restart_btn.setFont(QFont(self.btnFontFamily, 10))
+
+            later_btn = QPushButton(self.lang_manager.get_string("later"), self.language_change_confirm_window)
+            later_btn.resize(65, 25)
+            later_btn.move(115, 55)
+            later_btn.setFont(QFont(self.btnFontFamily, 10))
+
+            restart_btn.clicked.connect(lambda: execute_choice("restart"))
+            later_btn.clicked.connect(lambda: execute_choice("later"))
+            
+            self.language_change_confirm_window.exec_()
+        
         return f
 
     def mainWindow(self):
@@ -159,10 +191,10 @@ class App(QWidget):
         # ++ CURRENT FRAME SECTION
 
         lbl = QLabel(self.lang_manager.get_string("current_frame"), self)
-        lbl.setFont(self.font9)
+        lbl.resize(167, 20)
+        lbl.move(222, 13)
         lbl.setAlignment(Qt.AlignCenter)
-        #txt_width = lbl.fontMetrics().boundingRect(lbl.text()).width()
-        lbl.move(225, 15)
+        lbl.setFont(self.font9)
 
         self.current_frame_screen = QTextBrowser(self)
         self.current_frame_screen.resize(167, 40)
@@ -175,7 +207,9 @@ class App(QWidget):
         # ++ INFO SECTION
 
         lbl = QLabel(self.lang_manager.get_string("info"), self)
-        lbl.move(240, 75)
+        lbl.resize(167, 20)
+        lbl.move(222, 73)
+        lbl.setAlignment(Qt.AlignCenter)
         lbl.setFont(self.font9)
 
         self.info_screen = QTextBrowser(self)

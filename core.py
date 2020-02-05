@@ -14,11 +14,11 @@ class Core(object):
             with open("config.json", "r+", encoding="utf-8") as cfg_file:
                 self.config = json.load(cfg_file)
         except:
-            self.config = {"token": "", "frames": [], "delay": 3, "hide_token_input": False, "language": "en"}
+            self.config = {"token": "", "frames": [], "delay": 3, "language": "en", "hide_token_input": False, "tray_notifications": True}
 
         try:
             self.gui.token_input.setText(str(self.config["token"]))
-            self.gui.token_input.setToolTip(self.gui.lang_manager.get_string("your_token_tooltip")+str(self.config["token"]))
+            self.gui.token_input.setToolTip(self.gui.lang_manager.get_string("your_token_tooltip") + str(self.config["token"]))
         except KeyError:
             self.config.update({"token": ""})
 
@@ -31,11 +31,13 @@ class Core(object):
         try:
             if self.config["delay"] < 1:
                 self.config["delay"] = 3
-            self.speed_edit.setValue(self.config["delay"])
+            self.gui.speed_edit.setValue(self.config["delay"])
         except KeyError:
             self.config.update({"delay": 3})
+            self.gui.speed_edit.setValue(3)
         except:
             self.config["delay"] = 3
+            self.gui.speed_edit.setValue(3)
 
         try:
             if self.config["language"] in self.gui.lang_manager.supported_langs:
@@ -50,19 +52,18 @@ class Core(object):
         try:
             if self.config["hide_token_input"] == True:
                 self.gui.resize(400, 250)
-                pass
             else:
                 self.gui.resize(400, 280)
-                pass
         except:
             self.config.update({"hide_token_input": False})
             self.gui.resize(400, 280)
 
-            if "tray_notifications" not in self.config:
-                self.config.update({"tray_notifications": True})
+        if "tray_notifications" not in self.config:
+            self.config.update({"tray_notifications": True})
 
-            with open("config.json", "w", encoding="utf-8") as cfg_file:
-                json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
+        
+        with open("config.json", "w", encoding="utf-8") as cfg_file:
+             json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
     
     def parse_frame(self, frame):
         """Parse animated status frame."""
@@ -126,7 +127,8 @@ class Core(object):
                         if self.stop_thread == True:
                             return
                         time.sleep(30)
-                except requests.exceptions.RequestException as e:
+                except Exception as e:
+                #except requests.exceptions.RequestException as e:
                     logging.error("A request error occured: %s", e)
                     self.gui.current_info = "%s%s" % (self.gui.lang_manager.get_string("request_error"), e)
                     self.gui.custom_signal.infoUpdated.emit()
