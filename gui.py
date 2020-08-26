@@ -653,6 +653,9 @@ class App(QWidget):
             qtRectangle.moveCenter(centerPoint)
             self.move(qtRectangle.topLeft())
 
+    def closeEvent(self, event):
+        self.tray_icon.hide()
+
 class custom_signal(QObject):
     """Custom PyQT signal class."""
     frameUpdated = pyqtSignal()
