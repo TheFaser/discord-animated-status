@@ -475,7 +475,7 @@ class App(QWidget):
         """Clear all animated status frames."""
         if self.core.config["frames"] != []:
             warning=QMessageBox()
-            warning.setWindowTitle("Внимание")
+            warning.setWindowTitle(self.lang_manager.get_string("warning"))
             warning.setText(self.lang_manager.get_string("clear_warning"))
             warning.setIcon(warning.Warning)
             warning.setWindowIcon(self.icon)
