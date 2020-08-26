@@ -287,7 +287,7 @@ class App(QWidget):
         self.tray_icon.messageClicked.connect(self.show)
 
         self.run_stop_animated_status.triggered.connect(self.run)
-        self.exit_the_program.triggered.connect(sys.exit)
+        self.exit_the_program.triggered.connect(self.close_app)
 
         self.custom_signal = custom_signal()
         self.custom_signal.frameUpdated.connect(self.update_frame_screen)
@@ -652,6 +652,10 @@ class App(QWidget):
             centerPoint = QDesktopWidget().availableGeometry().center()
             qtRectangle.moveCenter(centerPoint)
             self.move(qtRectangle.topLeft())
+
+    def close_app(self):
+        self.tray_icon.hide()
+        sys.exit()
 
     def closeEvent(self, event):
         self.tray_icon.hide()
