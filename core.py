@@ -127,14 +127,15 @@ class Core(object):
                         if self.stop_thread == True:
                             return
                         time.sleep(30)
-                except Exception as e:
-                #except requests.exceptions.RequestException as e:
+
+                except requests.exceptions.RequestException as e:
                     logging.error("A request error occured: %s", e)
                     self.gui.current_info = "%s%s" % (self.gui.lang_manager.get_string("request_error"), e)
                     self.gui.custom_signal.infoUpdated.emit()
                     if self.config["tray_notifications"]:
                         self.gui.tray_icon.showMessage("Discord Animated Status", "%s%s" % (self.gui.lang_manager.get_string("request_error"), e), self.gui.icon, msecs=1000)
                     continue
+
                 if self.stop_thread == True:
                     return
                 time.sleep(self.config["delay"])
