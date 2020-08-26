@@ -9,7 +9,7 @@ import string
 import requests
 import logging
 
-version_m = "2.0-alpha"
+version_m = "2.0.1"
 authors_m = ["https://github.com/eternalfrenzy", "https://github.com/RinkLinky"]
 credits_m = {
     "eternalfrenzy": "-Request mining and collecting data\n-Core of the status changer\n-English translation",
@@ -17,6 +17,6 @@ credits_m = {
 }
 
 # Discord api url to work with
-api_url = "https://discordapp.com/api/v6"
+api_url = "https://discord.com/api/v6"
 # List of ASCII-characters for checking the token
 ascii_chars = list(string.ascii_lowercase + string.ascii_uppercase + string.digits + string.punctuation + " ")
