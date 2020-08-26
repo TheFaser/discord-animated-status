@@ -1,6 +1,4 @@
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
+from PyQt5 import QtWidgets
 
 from gui import App, apply_style
 from required import sys, logging
@@ -11,7 +9,7 @@ def entry():
 
     logging.info("--- LOG START ---")
 
-    win = QApplication(sys.argv)
+    win = QtWidgets.QApplication(sys.argv)
     apply_style(win)
     App()
     code = win.exec_()
