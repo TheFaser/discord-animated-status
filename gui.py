@@ -21,7 +21,7 @@ class App(QWidget):
         self.core.config_save()
         self.tray_icon.hide()
         scr = sys.executable
-        os.execl(scr, scr, *sys.argv)
+        os.execl(scr, '"%s"' % scr, *sys.argv)
 
     def make_lang_callback(self, lang):
         """Method factory for menu bar language selection."""
