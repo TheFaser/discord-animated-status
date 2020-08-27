@@ -13,7 +13,7 @@ class App(QWidget):
         super().__init__()
         self.lang_manager = LanguageManager()
         self.core = Core(self)
-        self.mainWindow()
+        self.init_gui()
 
     def restart(self):
         """Restarts the program."""
@@ -63,7 +63,7 @@ class App(QWidget):
         
         return f
 
-    def mainWindow(self):
+    def init_gui(self):
         """Initialize application layout."""
         self.setMinimumSize(QSize(400, 250))
         self.setMaximumSize(QSize(400, 280))
