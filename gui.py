@@ -646,8 +646,8 @@ class App(QWidget):
     def tray_click_checking(self, reason):
         if reason == QSystemTrayIcon.Trigger:
             self.show()
-            self.showMaximized()
-            
+            self.showNormal()
+
             qtRectangle = self.frameGeometry()
             centerPoint = QDesktopWidget().availableGeometry().center()
             qtRectangle.moveCenter(centerPoint)
