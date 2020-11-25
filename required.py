@@ -1,4 +1,3 @@
-from threading import Thread
 from datetime import datetime
 import os
 import sys

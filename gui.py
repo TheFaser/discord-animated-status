@@ -2,8 +2,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from required import logging, sys, os, Thread, ascii_chars, authors_m, version_m
-from core import Core
+from required import logging, sys, os, ascii_chars, authors_m, version_m
+from core import Core, RequestsThread
 from lang import LanguageManager
 
 class App(QWidget):
@@ -13,6 +13,7 @@ class App(QWidget):
         super().__init__()
         self.lang_manager = LanguageManager()
         self.core = Core(self)
+        self.requests_handler = RequestsThread(self.core, self)
         self.init_gui()
 
     def restart(self):
@@ -34,7 +35,7 @@ class App(QWidget):
                 self.core.config["language"] = lang
                 self.core.config_save()
                 self.language_change_confirm_window.close()
-        
+
         def confirm_lang_change():
             self.language_change_confirm_window = QDialog()
             self.language_change_confirm_window.setWindowTitle(self.lang_manager.get_string("language"))
@@ -262,14 +263,13 @@ class App(QWidget):
 
         self.show()
 
-        self.core.stop_thread = False
         self.current_info = ""
 
         self.stop_btn.setEnabled(False)
         self.setFocus()
 
-        self.run_btn.clicked.connect(self.run)
-        self.stop_btn.clicked.connect(self.stop)
+        self.run_btn.clicked.connect(self.run_animation)
+        self.stop_btn.clicked.connect(self.stop_animation)
         self.frames_list_edit.doubleClicked.connect(self.edit_frame)
         self.moveUp_frame_btn.clicked.connect(self.moveUp_frame)
         self.moveDown_frame_btn.clicked.connect(self.moveDown_frame)
@@ -281,16 +281,17 @@ class App(QWidget):
         self.tray_icon.activated.connect(self.tray_click_checking)
         self.tray_icon.messageClicked.connect(self.maximize_window)
 
-        self.run_stop_animated_status.triggered.connect(self.run)
+        self.run_stop_animated_status.triggered.connect(self.run_animation)
         self.exit_the_program.triggered.connect(self.close_app)
 
         self.custom_signal = custom_signal()
         self.custom_signal.frameUpdated.connect(self.update_frame_screen)
         self.custom_signal.infoUpdated.connect(self.update_info_screen)
-        self.custom_signal.threadStopped.connect(self.update_for_stop)
         self.custom_signal.authFailed.connect(self.on_auth_failed)
 
-    def run(self):
+        self.requests_handler.finished.connect(self.on_requests_thread_stop)
+
+    def run_animation(self):
         """Run animated status."""
         logging.info("Starting animated status...")
         if self.core.config["frames"] == []:
@@ -328,29 +329,20 @@ class App(QWidget):
 
                 self.run_stop_animated_status.disconnect()
                 self.run_stop_animated_status.setText(self.lang_manager.get_string("stop"))
-                self.run_stop_animated_status.triggered.connect(self.stop)
+                self.run_stop_animated_status.triggered.connect(self.stop_animation)
 
-                self.discord_status_updating_thread = Thread(target=self.core.run_animated_status, daemon=True)
-                self.discord_status_updating_thread.start()
+                self.requests_handler.start()
 
                 logging.info("Started animated status.")
 
-    def stop(self):
+    def stop_animation(self):
         """Stop animated status."""
         logging.info("Stopping animated status...")
-        self.core.stop_thread = True
         self.stop_btn.setEnabled(False)
         self.run_stop_animated_status.setEnabled(False)
         self.info_screen.setText(self.lang_manager.get_string("stopping"))
 
-        wait_the_stop = Thread(target=self.waiting_the_stop, daemon=True)
-        wait_the_stop.start()
-
-    def waiting_the_stop(self):
-        self.discord_status_updating_thread.join()
-
-        self.custom_signal.threadStopped.emit()
-        self.core.stop_thread = False
+        self.requests_handler.terminate()
 
         logging.info("Stopped animated status.")
 
@@ -802,8 +794,6 @@ class App(QWidget):
         frame_edit_window.setFocus()
         frame_edit_window.exec_()
 
-
-
     def about(self):
         about_window = QDialog()
         about_window.setWindowTitle(self.lang_manager.get_string("about"))
@@ -848,19 +838,19 @@ class App(QWidget):
     def update_info_screen(self):
         self.info_screen.setText(self.current_info)
 
-    def update_for_stop(self):
+    def on_requests_thread_stop(self):
         self.run_btn.setEnabled(True)
 
         self.run_stop_animated_status.setText(self.lang_manager.get_string("launch"))
         self.run_stop_animated_status.setEnabled(True)
         self.run_stop_animated_status.disconnect()
-        self.run_stop_animated_status.triggered.connect(self.run)
+        self.run_stop_animated_status.triggered.connect(self.run_animation)
 
         self.current_frame_screen.setText("")
         self.info_screen.setText("")
 
     def on_auth_failed(self):
-        self.stop()
+        self.stop_animation()
 
         if not self.isHidden():
             error_window = QMessageBox()

@@ -1,12 +1,13 @@
+from PyQt5.QtCore import QThread
+
 from required import json, logging, requests, datetime, api_url, time
 
 class Core(object):
     """Back-End class."""
 
     def __init__(self, gui):
-        self.config = {}
         self.gui = gui
-        self.stop_thread = False
+        self.config = {}
         self.statistics = {}
 
     def config_load(self):
@@ -146,6 +147,13 @@ class Core(object):
             with open("statistics.json", "w", encoding="utf-8") as json_file:
                 json.dump(self.statistics, json_file, indent=4, ensure_ascii=False)
 
+class RequestsThread(QThread):
+
+    def __init__(self, core, gui):
+        super().__init__()
+        self.core = core
+        self.gui = gui
+
     def parse_frame(self, frame):
         """Parse animated status frame."""
         now = datetime.now()
@@ -165,18 +173,18 @@ class Core(object):
     def auth(self, method):
         """Creates and returns a header for discord API using current token."""
         try:
-            return {"Authorization": self.config["token"], "Content-Type": "application/json", "method": method.upper()}
+            return {"Authorization": self.core.config["token"], "Content-Type": "application/json", "method": method.upper()}
         except (KeyError, TypeError) as e:
             logging.error("Failed to create authorization header: %s", e)
             return None
 
-    def run_animated_status(self):
+    def run(self):
         """Animated status thread target."""
-        self.statistics['last_session_requests'] = 0
-        self.save_statistics()
+        self.core.statistics['last_session_requests'] = 0
+        self.core.save_statistics()
 
         while True:
-            for item in self.config["frames"]:
+            for item in self.core.config["frames"]:
                 frame = item.copy()
 
                 # useless requests are disabled if string variables not found in frame
@@ -205,10 +213,8 @@ class Core(object):
                         logging.error("Discord XRate exceeded. Sleeping for 30 to let Discord rest.")
                         self.gui.current_info = self.gui.lang_manager.get_string("xrate_exceeded")
                         self.gui.custom_signal.infoUpdated.emit()
-                        if self.config["tray_notifications"]:
+                        if self.core.config["tray_notifications"]:
                             self.gui.tray_icon.showMessage("Discord Animated Status", self.gui.lang_manager.get_string("xrate_exceeded"), self.gui.icon, msecs=1000)
-                        if self.stop_thread == True:
-                            return
                         time.sleep(30)
                     elif req.status_code == 401:
                         logging.error("Failed to authorize in Discord. Thread stopping...")
@@ -220,21 +226,16 @@ class Core(object):
                         self.gui.custom_signal.infoUpdated.emit()
                         self.gui.current_frame = frame['str']
                         self.gui.custom_signal.frameUpdated.emit()
-                        if self.stop_thread == True:
-                            return
 
                 except requests.exceptions.RequestException as e:
                     logging.error("A request error occured: %s", e)
                     self.gui.current_info = "%s%s" % (self.gui.lang_manager.get_string("request_error"), e)
                     self.gui.custom_signal.infoUpdated.emit()
-                    if self.config["tray_notifications"]:
+                    if self.core.config["tray_notifications"]:
                         self.gui.tray_icon.showMessage("Discord Animated Status", "%s%s" % (self.gui.lang_manager.get_string("request_error"), e), self.gui.icon, msecs=1000)
-                    continue
 
-                self.statistics['total_requests_count'] += 1
-                self.statistics['last_session_requests'] += 1
-                self.save_statistics()
+                self.core.statistics['total_requests_count'] += 1
+                self.core.statistics['last_session_requests'] += 1
+                self.core.save_statistics()
 
-                if self.stop_thread == True:
-                    return
-                time.sleep(self.config["delay"])
+                time.sleep(self.core.config["delay"])
