@@ -201,8 +201,10 @@ class RequestsThread(QThread):
                 try:
                     req = requests.patch(api_url+"/users/@me/settings", headers=self.auth("patch"), data=p_params)
                     if req.status_code == 200:
-                        if frame["emoji"] == "":
+                        if not frame["emoji"] and not frame.get('custom_emoji_id'):
                             self.gui.current_frame = frame["str"]
+                        elif frame.get('custom_emoji_id'):
+                            self.gui.current_frame = "C | " + frame["str"]
                         else:
                             self.gui.current_frame = frame["emoji"] + " | " + frame["str"]
                         self.gui.custom_signal.frameUpdated.emit()
