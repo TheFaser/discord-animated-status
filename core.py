@@ -7,78 +7,159 @@ class Core(object):
         self.config = {}
         self.gui = gui
         self.stop_thread = False
+        self.statistics = {}
 
     def config_load(self):
         """Loads the settings from a config file."""
+        logging.info('Reading config file...')
         try:
-            with open("config.json", "r+", encoding="utf-8") as cfg_file:
-                self.config = json.load(cfg_file)
-        except:
-            self.config = {"token": "", "frames": [], "delay": 3, "language": "en", "hide_token_input": False, "tray_notifications": True}
+            with open("config.json", "r", encoding="utf-8") as cfg_file:
+                config = json.load(cfg_file)
 
-        try:
-            self.gui.token_input.setText(str(self.config["token"]))
-            self.gui.token_input.setToolTip(self.gui.lang_manager.get_string("your_token_tooltip") + str(self.config["token"]))
-        except KeyError:
-            self.config.update({"token": ""})
+            logging.info('Config file loaded.')
+
+        except FileNotFoundError:
+            logging.info("Config file not found. Reading old config file...")
+            config = self.load_old_config()
+            if not config:
+                logging.info("Creating default config...")
+                config = {"token": "", "frames": [], "delay": 3, "language": "en", "tray_notifications": True}
+                self.config_save(gui_emit=False, old_file=False, config=config)
+
+        except Exception as error:
+            logging.error("Failed to read config file: %s", repr(error))
+            config = self.load_old_config()
+            if not config:
+                logging.info("Creating default config...")
+                config = {"token": "", "frames": [], "delay": 3, "language": "en", "tray_notifications": True}
+                self.config_save(gui_emit=False, old_file=False, config=config)
+
+        finally:
+            self.config = config.copy()
 
         if "frames" not in self.config:
-            self.config.update({"frames": []})
-        if type(self.config["frames"]) != list:
             self.config["frames"] = []
-        self.gui.frames_list_edit_filling()
+        elif not isinstance(self.config["frames"], list):
+            self.config["frames"] = []
 
         try:
             if self.config["delay"] < 1:
                 self.config["delay"] = 3
-            self.gui.speed_edit.setValue(self.config["delay"])
-        except KeyError:
-            self.config.update({"delay": 3})
-            self.gui.speed_edit.setValue(3)
-        except:
+        except (KeyError, TypeError):
             self.config["delay"] = 3
-            self.gui.speed_edit.setValue(3)
 
-        try:
-            if self.config["language"] in self.gui.lang_manager.supported_langs:
-                self.gui.lang_manager.selected_lang = self.config["language"]
-            else:
-                self.gui.lang_manager.selected_lang = "en"
-        except KeyError:
-            self.config.update({"language": "en"})
-        except:
-            self.config["language"] = "en"
-
-        try:
-            if self.config["hide_token_input"] == True:
-                self.gui.resize(400, 250)
-            else:
-                self.gui.resize(400, 280)
-        except:
-            self.config.update({"hide_token_input": False})
-            self.gui.resize(400, 280)
+        if 'language' not in self.config:
+            self.config['language'] = "en"
 
         if "tray_notifications" not in self.config:
-            self.config.update({"tray_notifications": True})
+            self.config["tray_notifications"] = True
 
-        
-        with open("config.json", "w", encoding="utf-8") as cfg_file:
-             json.dump(self.config, cfg_file, indent=4, ensure_ascii=False)
-    
+        if config != self.config:
+            self.config_save(gui_emit=False)
+
+    def apply_config(self):
+        self.gui.speed_edit.setValue(self.config['delay'])
+        self.gui.frames_list_edit_filling()
+
+    def load_old_config(self):
+        logging.info('Reading config.old file...')
+        try:
+            with open("config.old.json", "r", encoding="utf-8") as cfg_file:
+                config = json.load(cfg_file)
+            logging.info('config.old file loaded.')
+
+        except FileNotFoundError:
+            logging.info("config.old file not found.")
+            config = {}
+
+        except Exception as error:
+            logging.error("Failed to read config.old file: %s", repr(error))
+            config = {}
+
+        return config
+
+    def config_save(self, gui_emit=True, old_file=True, config=None):
+        """Saves the settings to a config file."""
+        logging.info('Config file saving...')
+
+        if not config:
+            config = self.config
+
+        try:
+            if old_file:
+                try:
+                    with open("config.json", "r", encoding="utf-8") as cfg_file:
+                        old_config = json.load(cfg_file)
+
+                    with open("config.old.json", "w", encoding="utf-8") as cfg_file:
+                        json.dump(old_config, cfg_file, ensure_ascii=False, indent=4)
+
+                    logging.info('config.old file saved.')
+
+                except Exception as error:
+                    logging.error("Failed to save old config: %s", repr(error))
+                    if gui_emit:
+                        self.gui.current_info = self.gui.lang_manager.get_string("save_error")
+                        self.gui.custom_signal.infoUpdated.emit()
+
+            with open("config.json", "w", encoding="utf-8") as cfg_file:
+                json.dump(config, cfg_file, ensure_ascii=False, indent=4)
+
+            logging.info('Config file saved.')
+
+        except Exception as error:
+            logging.error("Failed to save config: %s", repr(error))
+            if gui_emit:
+                self.gui.current_info = self.gui.lang_manager.get_string("save_error")
+                self.gui.custom_signal.infoUpdated.emit()
+
+    def save_statistics(self):
+        """Saves the settings to a config file."""
+        logging.info('Statistics file saving...')
+        try:
+            with open("statistics.json", "w", encoding="utf-8") as json_file:
+                json.dump(self.statistics, json_file, ensure_ascii=False)
+
+            logging.info('Statistics file saved.')
+
+        except Exception as error:
+            logging.error("Failed to save statistics: %s", repr(error))
+
+    def load_statistics(self):
+        """Loads the statistics from a file."""
+        logging.info('Reading statistics file...')
+        try:
+            with open("statistics.json", "r", encoding="utf-8") as json_file:
+                self.statistics = json.load(json_file)
+
+            logging.info('Statistics file loaded.')
+
+        except FileNotFoundError:
+            logging.info("Statistics file not found.")
+            self.statistics = {"total_requests_count": 0, "last_session_requests": 0}
+            self.save_statistics()
+
+        except Exception as error:
+            logging.error("Failed to load statistics file: %s", repr(error))
+            self.statistics = {"total_requests_count": 0, "last_session_requests": 0}
+
+            with open("statistics.json", "w", encoding="utf-8") as json_file:
+                json.dump(self.statistics, json_file, indent=4, ensure_ascii=False)
+
     def parse_frame(self, frame):
         """Parse animated status frame."""
         now = datetime.now()
         try:
             mydata = requests.get(api_url+"/users/@me", headers=self.auth("get")).json(encoding="utf-8")
             frame["str"] = frame["str"].replace( "#curtime#", datetime.strftime(now, "%H:%M"))
-            servcount = len(requests.get(api_url+"/users/@me/guilds", headers=self.auth("get")).json(encoding="utf-8"))
+            servcount = len(requests.get(api_url + "/users/@me/guilds", headers=self.auth("get")).json(encoding="utf-8"))
             frame["str"] = frame["str"].replace("#servcount#", str(servcount))
             frame["str"] = frame["str"].replace("#name#", mydata["username"])
             frame["str"] = frame["str"].replace("#id#", mydata["discriminator"])
         except (KeyError, TypeError, requests.exceptions.RequestException) as e:
             frame = {"str": "Error", "emoji": ""}
-            logging.error("Failed to parse frame: %s", e)
-            self.gui.current_info = "%s: %s" % (self.gui.lang_manager.get_string("parse_error"), e)
+            logging.error("Failed to parse frame: %s", repr(e))
+            self.gui.current_info = "%s: %s" % (self.gui.lang_manager.get_string("parse_error"), repr(e))
             self.gui.custom_signal.infoUpdated.emit()
 
     def auth(self, method):
@@ -89,27 +170,29 @@ class Core(object):
             logging.error("Failed to create authorization header: %s", e)
             return None
 
-    def config_save(self):
-        """Saves the settings to a config file."""
-        try:
-            with open("config.json", "w", encoding="utf-8") as cfg_file:
-                json.dump(self.config, cfg_file, ensure_ascii=False, indent=4)
-        except:
-            logging.error("Failed to save config.")
-            self.gui.current_info = self.gui.lang_manager.get_string("save_error")
-            self.gui.custom_signal.infoUpdated.emit()
-
     def run_animated_status(self):
         """Animated status thread target."""
+        self.statistics['last_session_requests'] = 0
+        self.save_statistics()
+
         while True:
             for item in self.config["frames"]:
                 frame = item.copy()
-                self.parse_frame(frame)
-                p_params = json.dumps({"custom_status": {"text": frame["str"], "emoji_id": None, "emoji_name": frame["emoji"], "expires_at": None}})
+
+                # useless requests are disabled if string variables not found in frame
+                for var in ('#curtime#', '#servcount#', '#name#', '#id#'):
+                    if var in frame['str']:
+                        self.parse_frame(frame)
+                        break
+
+                p_params = json.dumps({"custom_status": {"text": frame.get("str"),
+                                                         "emoji_id": frame.get('custom_emoji_id'),
+                                                         "emoji_name": frame.get('emoji'),
+                                                         "expires_at": None}})
+
                 try:
                     req = requests.patch(api_url+"/users/@me/settings", headers=self.auth("patch"), data=p_params)
                     if req.status_code == 200:
-                        pass
                         if frame["emoji"] == "":
                             self.gui.current_frame = frame["str"]
                         else:
@@ -119,14 +202,26 @@ class Core(object):
                             self.gui.current_info = ""
                             self.gui.custom_signal.infoUpdated.emit()
                     elif req.status_code == 429:  # Never create request overflow
-                        logging.error("Discord XRate exceeded. Sleeping for 30s to let Discord rest.")
+                        logging.error("Discord XRate exceeded. Sleeping for 30 to let Discord rest.")
                         self.gui.current_info = self.gui.lang_manager.get_string("xrate_exceeded")
                         self.gui.custom_signal.infoUpdated.emit()
                         if self.config["tray_notifications"]:
-                            self.gui.tray_icon.showMessage("Discord Animated Status", self.gui.lang_manager.get_string("xrate_exceeded"), self.icon, msecs=1000)
+                            self.gui.tray_icon.showMessage("Discord Animated Status", self.gui.lang_manager.get_string("xrate_exceeded"), self.gui.icon, msecs=1000)
                         if self.stop_thread == True:
                             return
                         time.sleep(30)
+                    elif req.status_code == 401:
+                        logging.error("Failed to authorize in Discord. Thread stopping...")
+                        self.gui.custom_signal.authFailed.emit()
+                        return
+                    elif req.status_code == 400:
+                        logging.error("Bad Request (400)")
+                        self.gui.current_info = "Bad Request (400)"
+                        self.gui.custom_signal.infoUpdated.emit()
+                        self.gui.current_frame = frame['str']
+                        self.gui.custom_signal.frameUpdated.emit()
+                        if self.stop_thread == True:
+                            return
 
                 except requests.exceptions.RequestException as e:
                     logging.error("A request error occured: %s", e)
@@ -135,6 +230,10 @@ class Core(object):
                     if self.config["tray_notifications"]:
                         self.gui.tray_icon.showMessage("Discord Animated Status", "%s%s" % (self.gui.lang_manager.get_string("request_error"), e), self.gui.icon, msecs=1000)
                     continue
+
+                self.statistics['total_requests_count'] += 1
+                self.statistics['last_session_requests'] += 1
+                self.save_statistics()
 
                 if self.stop_thread == True:
                     return

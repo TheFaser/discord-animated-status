@@ -1,11 +1,23 @@
 from PyQt5 import QtWidgets
 
 from gui import App, apply_style
-from required import sys, logging
+from required import sys, logging, os, datetime
 
 def entry():
     """Application entry point."""
-    logging.basicConfig(filename="last.log", level=logging.INFO, format="%(asctime)-15s | %(levelname)s | %(message)s")
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+
+    log_formatter_string = '%(asctime)s | %(levelname)s |%(filename)s:%(lineno)d| %(message)s'
+    log_formatter = logging.Formatter(log_formatter_string, datefmt='%Y-%m-%d-%H:%M:%S')
+    log_filename = datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + '.log'
+
+    file_handler = logging.FileHandler(os.path.join('logs', log_filename))
+    file_handler.setFormatter(log_formatter)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(log_formatter)
+
+    logging.basicConfig(handlers=[file_handler, console_handler], level=logging.DEBUG)
 
     logging.info("--- LOG START ---")
 

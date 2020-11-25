@@ -9,7 +9,7 @@ import string
 import requests
 import logging
 
-version_m = "2.0.1"
+version_m = "2.1.0 beta"
 authors_m = ["https://github.com/eternalfrenzy", "https://github.com/RinkLinky"]
 credits_m = {
     "eternalfrenzy": "-Request mining and collecting data\n-Core of the status changer\n-English translation",

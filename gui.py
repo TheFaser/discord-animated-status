@@ -35,7 +35,7 @@ class App(QWidget):
                 self.core.config_save()
                 self.language_change_confirm_window.close()
         
-        def f():
+        def confirm_lang_change():
             self.language_change_confirm_window = QDialog()
             self.language_change_confirm_window.setWindowTitle(self.lang_manager.get_string("language"))
             self.language_change_confirm_window.setWindowIcon(self.icon)
@@ -58,17 +58,20 @@ class App(QWidget):
 
             restart_btn.clicked.connect(lambda: execute_choice("restart"))
             later_btn.clicked.connect(lambda: execute_choice("later"))
-            
+
             self.language_change_confirm_window.exec_()
         
-        return f
+        return confirm_lang_change
 
     def init_gui(self):
         """Initialize application layout."""
         self.setMinimumSize(QSize(400, 250))
-        self.setMaximumSize(QSize(400, 280))
+        self.setMaximumSize(QSize(400, 250))
 
-        self.lang_manager.load_language()
+        self.core.config_load()
+        self.core.load_statistics()
+
+        self.lang_manager.load_language(self.core.config['language'])
 
         # + PRESETS SECTION
 
@@ -124,13 +127,16 @@ class App(QWidget):
         self.menu_bar = QMenuBar(self)
         self.menu_bar.setFont(self.font9)
 
-        self.menu_bar_config = self.menu_bar.addMenu(self.lang_manager.get_string("config"))
-        self.menu_bar_config_load = QAction(self.lang_manager.get_string("load"), self)
-        self.menu_bar_config_load.triggered.connect(self.core.config_load)
-        self.menu_bar_config_save = QAction(self.lang_manager.get_string("save"), self)
-        self.menu_bar_config_save.triggered.connect(self.core.config_save)
-        self.menu_bar_config.addAction(self.menu_bar_config_save)
-        self.menu_bar_config.addAction(self.menu_bar_config_load)
+        self.menu_bar_settings = self.menu_bar.addMenu(self.lang_manager.get_string("config"))
+        self.menu_bar_settings_token = QAction(self.lang_manager.get_string("token"), self)
+        self.menu_bar_settings_token.triggered.connect(self.edit_token)
+        self.menu_bar_settings_load = QAction(self.lang_manager.get_string("load_config"), self)
+        self.menu_bar_settings_load.triggered.connect(self.core.config_load)
+        self.menu_bar_settings_save = QAction(self.lang_manager.get_string("save_config"), self)
+        self.menu_bar_settings_save.triggered.connect(self.core.config_save)
+        self.menu_bar_settings.addAction(self.menu_bar_settings_token)
+        self.menu_bar_settings.addAction(self.menu_bar_settings_save)
+        self.menu_bar_settings.addAction(self.menu_bar_settings_load)
 
         self.menu_bar_language = self.menu_bar.addMenu(self.lang_manager.get_string("language"))
         for lang in self.lang_manager.supported_langs:  # For each supported language
@@ -250,18 +256,9 @@ class App(QWidget):
 
         # ++ END CONTROLS SECTION
 
-        # ++ TOKEN INPUT SECTION
-
-        self.token_input = QLineEdit(self)
-        self.token_input.resize(378, 20)
-        self.token_input.move(10, 252)
-        self.token_input.setAlignment(Qt.AlignCenter)
-        self.token_input.setPlaceholderText(self.lang_manager.get_string("your_token"))
-        self.token_input.setToolTip(self.lang_manager.get_string("your_token"))
-
-        # ++ END TOKEN INPUT SECTION
-
         # + END MAIN SECTION
+
+        self.core.apply_config()
 
         self.show()
 
@@ -269,8 +266,7 @@ class App(QWidget):
         self.current_info = ""
 
         self.stop_btn.setEnabled(False)
-
-        self.core.config_load()
+        self.setFocus()
 
         self.run_btn.clicked.connect(self.run)
         self.stop_btn.clicked.connect(self.stop)
@@ -281,10 +277,9 @@ class App(QWidget):
         self.add_frame_btn.clicked.connect(self.add_frame)
         self.remove_frame_btn.clicked.connect(self.remove_frame)
         self.speed_edit.valueChanged.connect(self.speed_change)
-        self.token_input.editingFinished.connect(self.token_editing)
 
         self.tray_icon.activated.connect(self.tray_click_checking)
-        self.tray_icon.messageClicked.connect(self.show)
+        self.tray_icon.messageClicked.connect(self.maximize_window)
 
         self.run_stop_animated_status.triggered.connect(self.run)
         self.exit_the_program.triggered.connect(self.close_app)
@@ -293,6 +288,7 @@ class App(QWidget):
         self.custom_signal.frameUpdated.connect(self.update_frame_screen)
         self.custom_signal.infoUpdated.connect(self.update_info_screen)
         self.custom_signal.threadStopped.connect(self.update_for_stop)
+        self.custom_signal.authFailed.connect(self.on_auth_failed)
 
     def run(self):
         """Run animated status."""
@@ -315,13 +311,6 @@ class App(QWidget):
             error.setText(self.lang_manager.get_string("input_token"))
             error.setIcon(error.Warning)
             error.exec_()
-            if self.core.config["hide_token_input"]:
-                error = QMessageBox()
-                error.setWindowTitle(self.lang_manager.get_string("error"))
-                error.setWindowIcon(self.icon)
-                error.setText(self.lang_manager.get_string("unhide_token"))
-                error.setIcon(error.Warning)
-                error.exec_()
         else:
             for char in self.core.config["token"]:
                 if char not in ascii_chars:
@@ -365,75 +354,21 @@ class App(QWidget):
 
         logging.info("Stopped animated status.")
 
-    def edit_frame(self):
-        self.status_edit_window = QDialog()
-        self.status_edit_window.setWindowTitle(self.lang_manager.get_string("edit_frame"))
-        self.status_edit_window.setWindowIcon(self.icon)
-        self.status_edit_window.setMinimumSize(QSize(190, 105))
-        self.status_edit_window.setMaximumSize(QSize(190, 105))
-        self.status_edit_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
-
-        lbl = QLabel(self.lang_manager.get_string("edit_frame_tooltip"), self.status_edit_window)
-        lbl.move(10, 15)
-
-        self.emoji_edit = QLineEdit(self.status_edit_window)
-        self.emoji_edit.resize(22, 22)
-        self.emoji_edit.move(10, 35)
-        self.emoji_edit.setMaxLength(1)
-        self.emoji_edit.setAlignment(Qt.AlignCenter)
-        self.emoji_edit.setPlaceholderText("😉")
-
-        self.text_edit = QLineEdit(self.status_edit_window)
-        self.text_edit.resize(140, 22)
-        self.text_edit.move(40, 35)
-        self.text_edit.setFocus()
-
-        add_btn = QPushButton(self.lang_manager.get_string("add"), self.status_edit_window)
-        add_btn.resize(170, 25)
-        add_btn.move(10, 71)
-        add_btn.setFont(QFont(self.btnFontFamily, 10))
-
-        self.emoji_edit.setText(self.core.config["frames"][self.frames_list_edit.currentRow()]["emoji"])
-        self.text_edit.setText(self.core.config["frames"][self.frames_list_edit.currentRow()]["str"])
-
-        add_btn.clicked.connect(self.save_frame)
-        self.status_edit_window.exec_()
-
-    def save_frame(self):
-        text = self.text_edit.text().strip()
-        emoji = self.emoji_edit.text().strip()
-        self.core.config["frames"][self.frames_list_edit.currentRow()] = {"str": text, "emoji": emoji}
-        if text == "":
-            error = QMessageBox()
-            error.setWindowTitle(self.lang_manager.get_string(self.lang_manager.get_string("error")))
-            error.setWindowIcon(self.icon)
-            error.setText(self.lang_manager.get_string("input_status"))
-            error.setIcon(error.Warning)
-            error.exec_()
-            self.text_edit.clear()
-            return
-
-        if emoji == "":
-            new_item = text
-        else:
-            new_item = emoji+" | "+text
-
-        self.frames_list_edit.currentItem().setText(new_item)
-        self.frames_list_edit.row(self.frames_list_edit.currentItem())
-        self.core.config_save()
-        self.status_edit_window.close()
-
     def frames_list_edit_filling(self):
         self.frames_list_edit.clear()
-        for frame in self.core.config["frames"]:
+        for frame_id, frame in enumerate(self.core.config["frames"].copy()):
             try:
-                if frame["emoji"] == "":
-                    new_item = frame["str"]
-                else:
+                if frame.get('custom_emoji_id'):
+                    new_item = "C | " + frame["str"]
+                elif frame["emoji"]:
                     new_item = frame["emoji"] + " | " + frame["str"]
+                else:
+                    new_item = frame["str"]
                 self.frames_list_edit.addItem(new_item)
-            except:
-                del self.core.config["frames"][self.core.config["frames"].index(frame)]
+            except Exception as error:
+                logging.error("Failed to add frame while filling: %s. The broken frame will be deleted.", repr(error))
+                del self.core.config["frames"][frame_id]
+                self.core.config_save()
 
     def moveUp_frame(self):
         try:
@@ -474,122 +409,30 @@ class App(QWidget):
     def clear_frames_list(self):
         """Clear all animated status frames."""
         if self.core.config["frames"] != []:
-            warning=QMessageBox()
-            warning.setWindowTitle(self.lang_manager.get_string("warning"))
-            warning.setText(self.lang_manager.get_string("clear_warning"))
-            warning.setIcon(warning.Warning)
-            warning.setWindowIcon(self.icon)
-            warning.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+            warning_window = QMessageBox()
+            warning_window.setWindowTitle(self.lang_manager.get_string("warning"))
+            warning_window.setText(self.lang_manager.get_string("clear_warning"))
+            warning_window.setIcon(warning_window.Warning)
+            warning_window.setWindowIcon(self.icon)
+            warning_window.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
 
-            yes=warning.button(QMessageBox.Yes)
+            yes = warning_window.button(QMessageBox.Yes)
             yes.setText(self.lang_manager.get_string("yes"))
-            no=warning.button(QMessageBox.Cancel)
+            no = warning_window.button(QMessageBox.Cancel)
             no.setText(self.lang_manager.get_string("cancel"))
 
-            answer=warning.exec()
+            answer = warning_window.exec()
 
-            if answer==QMessageBox.Yes:
+            if answer == QMessageBox.Yes:
                 self.frames_list_edit.clear()
                 self.core.config["frames"] = []
                 self.core.config_save()
 
-    def add_frame(self):
-        self.status_edit_window = QDialog()
-        self.status_edit_window.setWindowTitle(self.lang_manager.get_string("new_frame"))
-        self.status_edit_window.setWindowIcon(self.icon)
-        self.status_edit_window.setMinimumSize(QSize(190, 105))
-        self.status_edit_window.setMaximumSize(QSize(190, 105))
-        self.status_edit_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
-
-        lbl = QLabel(self.lang_manager.get_string("add_frame_tooltip"), self.status_edit_window)
-        lbl.move(10, 15)
-
-        self.emoji_edit = QLineEdit(self.status_edit_window)
-        self.emoji_edit.resize(22, 22)
-        self.emoji_edit.move(10, 35)
-        self.emoji_edit.setMaxLength(1)
-        self.emoji_edit.setAlignment(Qt.AlignCenter)
-        self.emoji_edit.setPlaceholderText("😉")
-
-        self.text_edit = QLineEdit(self.status_edit_window)
-        self.text_edit.resize(140, 22)
-        self.text_edit.move(40, 35)
-        self.text_edit.setFocus()
-
-        lbl = QLabel(self.lang_manager.get_string("regex"), self.status_edit_window)
-        lbl.move(10, 40)
-
-        add_btn = QPushButton(self.lang_manager.get_string("add"), self.status_edit_window)
-        add_btn.resize(170, 25)
-        add_btn.move(10, 71)
-        add_btn.setFont(QFont(self.btnFontFamily, 10))
-
-        add_btn.clicked.connect(self.new_frame)
-        self.status_edit_window.exec_()
-
-    def about(self):
-        self.about_window = QDialog()
-        self.about_window.setWindowTitle(self.lang_manager.get_string("about"))
-        self.about_window.setWindowIcon(self.icon)
-        self.about_window.setMinimumSize(QSize(350, 250))
-        self.about_window.setMaximumSize(QSize(350, 250))
-        self.about_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
-
-        self.about_window_bg_label = QLabel("", self.about_window)
-        self.about_window_bg_label.setAlignment(Qt.AlignCenter)
-        self.about_window_bg_label.resize(350, 250)
-
-        y = 0
-        for k in authors_m:
-            lbl = QLabel(k, self.about_window)
-            lbl.setFont(self.font7)
-            lbl.setAlignment(Qt.AlignCenter)
-            txt_width = lbl.fontMetrics().boundingRect(lbl.text()).width()
-            txt_height = lbl.fontMetrics().boundingRect(lbl.text()).height()
-            lbl.move(350/2-txt_width/2, 250/2+(txt_height*y)-30)
-            y += 1
-
-        self.about_window_version_label = QLabel("Version: %s" % version_m, self.about_window)
-        self.about_window_version_label.setFont(self.font10)
-        self.about_window_version_label.setAlignment(Qt.AlignCenter)
-        txt_width = self.about_window_version_label.fontMetrics().boundingRect(self.about_window_version_label.text()).width()
-        self.about_window_version_label.move(350/2-txt_width/2, 250/2+40)
-
-        self.about_window_bg = QMovie("res/about-bg.gif")
-        self.about_window_bg_label.setMovie(self.about_window_bg)
-        self.about_window_bg.start()
-
-        self.about_window.exec_()
-
-    def new_frame(self):
-        text = self.text_edit.text().strip()
-        emoji = self.emoji_edit.text().strip()
-        self.core.config["frames"].append({"str": text, "emoji": emoji})
-        if text == "":
-            logging.error("Failed to add new frame: Text field was empty.")
-            error = QMessageBox()
-            error.setWindowTitle(self.lang_manager.get_string("error"))
-            error.setWindowIcon(QIcon("icon.ico"))
-            error.setText(self.lang_manager.get_string("input_status"))
-            error.setIcon(error.Warning)
-            error.exec_()
-            self.text_edit.clear()
-            return
-
-        if emoji == "":
-            new_item = text
-        else:
-            new_item = emoji+" | "+text
-
-        self.frames_list_edit.addItem(new_item)
-        self.core.config_save()
-        self.status_edit_window.close()
-
     def remove_frame(self):
         try:
-            currentRow=self.frames_list_edit.currentRow()
+            currentRow = self.frames_list_edit.currentRow()
             del self.core.config["frames"][currentRow]
-        
+
             self.frames_list_edit_filling()
 
             self.core.config_save()
@@ -597,30 +440,407 @@ class App(QWidget):
             if len(self.core.config["frames"]) == currentRow:
                 currentRow -= 1
             self.frames_list_edit.setCurrentRow(currentRow)
-        except:
-            logging.error("Failed to remove frame from frame list.")
-            pass
+        except Exception as error:
+            logging.error("Failed to remove frame from frame list: %s", repr(error))
+
+    def edit_token(self):
+        token_edit_window = QDialog()
+        token_edit_window.setWindowTitle(self.lang_manager.get_string("token"))
+        token_edit_window.setWindowIcon(self.icon)
+        token_edit_window.setMinimumSize(QSize(375, 105))
+        token_edit_window.setMaximumSize(QSize(375, 105))
+        token_edit_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        token_edit_window.setStyleSheet("QToolTip {background-color: black; color: white; border: black solid 1px}")
+
+        lbl = QLabel(self.lang_manager.get_string('your_token'), token_edit_window)
+        lbl.move(20, 15)
+
+        token_edit = QLineEdit(token_edit_window)
+        token_edit.resize(335, 22)
+        token_edit.move(20, 35)
+
+        save_btn = QPushButton(self.lang_manager.get_string("save"), token_edit_window)
+        save_btn.resize(125, 25)
+        save_btn.move(20, 68)
+        save_btn.setFont(QFont(self.btnFontFamily, 10))
+        save_btn.setFocusPolicy(Qt.NoFocus)
+
+        hide_token_checkbox = QCheckBox(self.lang_manager.get_string('hide'), token_edit_window)
+        hide_token_checkbox.resize(150, 25)
+        hide_token_checkbox.move(200, 70)
+        hide_token_checkbox.setFont(QFont(self.btnFontFamily, 10))
+        hide_token_checkbox.setLayoutDirection(Qt.RightToLeft)
+        hide_token_checkbox.setFocusPolicy(Qt.NoFocus)
+        hide_token_checkbox.toggle()
+
+        self._token_buffer = self.core.config['token']
+        self._last_buffer_len = len(self.core.config['token'])
+        self._token_is_hide = True
+
+        def save_token():
+            if self._token_buffer.strip() == "":
+                error_window = QMessageBox()
+                error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                error_window.setWindowIcon(self.icon)
+                error_window.setText(self.lang_manager.get_string("enter_the_token"))
+                error_window.setIcon(error_window.Warning)
+                error_window.exec_()
+                token_edit.clear()
+                return
+
+            self.core.config["token"] = self._token_buffer
+            self.core.config_save()
+
+            token_edit_window.close()
+
+        def switch_token_visibility():
+            self._token_is_hide = not self._token_is_hide # switch
+
+            if self._token_is_hide:
+                token_edit.setText('*' * len(self._token_buffer))
+            else:
+                token_edit.setText(self._token_buffer)
+
+        def on_token_edit():
+            if self._token_is_hide:
+                if len(token_edit.text()) == 0:
+                    self._token_buffer = ''
+                elif self._last_buffer_len > len(token_edit.text()):
+                    min_len = self._last_buffer_len - len(token_edit.text())
+                    self._token_buffer = self._token_buffer[:-min_len]
+                else:
+                    self._token_buffer += token_edit.text()[self._last_buffer_len:]
+                self._last_buffer_len = len(token_edit.text())
+                token_edit.setText('*' * self._last_buffer_len)
+
+            else:
+                self._token_buffer = token_edit.text()
+
+        token_edit.textEdited.connect(on_token_edit)
+        hide_token_checkbox.stateChanged.connect(switch_token_visibility)
+        save_btn.clicked.connect(save_token)
+
+        token_edit.setText('*' * self._last_buffer_len)
+
+        token_edit_window.setFocus()
+        token_edit_window.exec_()
+
+    def add_frame(self):
+        frame_edit_window = QDialog()
+        frame_edit_window.setWindowTitle(self.lang_manager.get_string("new_frame"))
+        frame_edit_window.setWindowIcon(self.icon)
+        frame_edit_window.setMinimumSize(QSize(190, 105))
+        frame_edit_window.setMaximumSize(QSize(190, 105))
+        frame_edit_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        frame_edit_window.setStyleSheet("QToolTip {background-color: black; color: white; border: black solid 1px}")
+
+        emoji_edit = QLineEdit(frame_edit_window)
+        emoji_edit.resize(22, 22)
+        emoji_edit.move(10, 35)
+        emoji_edit.setAlignment(Qt.AlignCenter)
+        emoji_edit.setPlaceholderText("😉")
+        emoji_edit.setToolTip(self.lang_manager.get_string("status_emoji"))
+
+        text_edit = QLineEdit(frame_edit_window)
+        text_edit.resize(140, 22)
+        text_edit.move(40, 35)
+
+        add_btn = QPushButton(self.lang_manager.get_string("add"), frame_edit_window)
+        add_btn.resize(170, 25)
+        add_btn.move(10, 71)
+        add_btn.setFont(QFont(self.btnFontFamily, 10))
+
+        def set_custom_emoji():
+            custom_emoji_window = QDialog()
+            custom_emoji_window.setWindowTitle(self.lang_manager.get_string("custom_emoji"))
+            custom_emoji_window.setWindowIcon(self.icon)
+            custom_emoji_window.setMinimumSize(QSize(350, 70))
+            custom_emoji_window.setMaximumSize(QSize(350, 70))
+            custom_emoji_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+            custom_emoji_window.setStyleSheet("QToolTip {background-color: black; color: white; border: black solid 1px}")
+
+            emoji_id_edit = QLineEdit(custom_emoji_window)
+            emoji_id_edit.resize(155, 22)
+            emoji_id_edit.move(10, 8)
+            emoji_id_edit.setPlaceholderText("ID")
+            emoji_id_edit.setToolTip(self.lang_manager.get_string("custom_emoji_id_tooltip"))
+
+            nitro_lbl = QLabel(self.lang_manager.get_string('nitro_warning'), custom_emoji_window)
+            nitro_lbl.setAlignment(Qt.AlignCenter)
+            nitro_lbl.resize(175, 22)
+            nitro_lbl.move(170, 20)
+
+            set_btn = QPushButton(self.lang_manager.get_string("set"), custom_emoji_window)
+            set_btn.resize(155, 25)
+            set_btn.move(10, 37)
+            set_btn.setFont(QFont(self.btnFontFamily, 10))
+
+            def save_custom_emoji():
+                emoji_id = emoji_id_edit.text().strip()
+                if emoji_id and not emoji_id.isdigit():
+                    logging.error("Failed to set custom emoji: ID is not a digit.")
+                    error_window = QMessageBox()
+                    error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                    error_window.setWindowIcon(QIcon("icon.ico"))
+                    error_window.setText(self.lang_manager.get_string("invalid_emoji_id"))
+                    error_window.setIcon(error_window.Warning)
+                    error_window.exec_()
+                    return
+
+                if emoji_id:
+                    self._custom_emoji_id_buffer = emoji_id_edit.text().strip()
+                    emoji_edit.setReadOnly(True)
+                    emoji_edit.setText('C')
+                else:
+                    self._custom_emoji_id_buffer = ''
+                    emoji_edit.setReadOnly(False)
+                    if emoji_edit.text() == 'C':
+                        emoji_edit.setText('')
+
+                custom_emoji_window.close()
+
+            emoji_id_edit.setText(self._custom_emoji_id_buffer)
+
+            set_btn.clicked.connect(save_custom_emoji)
+
+            custom_emoji_window.setFocus()
+            custom_emoji_window.exec_()
+
+        def on_emoji_edit():
+            try:
+                e_buffer = emoji_edit.text()[:1].encode('utf-8').decode('utf-8')
+                self._emoji_buffer = e_buffer
+                emoji_edit.setText(e_buffer)
+            except (UnicodeEncodeError, UnicodeDecodeError, UnicodeTranslateError):
+                self._emoji_buffer = ''
+                emoji_edit.setText('')
+
+        def save_new_frame():
+            text = text_edit.text().strip()
+
+            if not text:
+                if self._emoji_buffer or self._custom_emoji_id_buffer:
+                    pass
+                else:
+                    logging.error("Failed to add new frame: Text field was empty.")
+                    error_window = QMessageBox()
+                    error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                    error_window.setWindowIcon(QIcon("icon.ico"))
+                    error_window.setText(self.lang_manager.get_string("input_status"))
+                    error_window.setIcon(error_window.Warning)
+                    error_window.exec_()
+                    text_edit.clear()
+                    return
+
+            new_frame = {"str": text, "emoji": self._emoji_buffer}
+            if self._custom_emoji_id_buffer:
+                new_frame['custom_emoji_id'] = int(self._custom_emoji_id_buffer)
+
+            self.core.config["frames"].append(new_frame)
+
+            self.core.config_save()
+            self.frames_list_edit_filling()
+            self.frames_list_edit.setCurrentRow(self.frames_list_edit.count() - 1)
+            frame_edit_window.close()
+
+        menu_bar = QMenuBar(frame_edit_window)
+        menu_bar.setFont(self.font9)
+        menu_bar_emoji = menu_bar.addMenu(self.lang_manager.get_string("more"))
+        menu_bar_custom_emoji = QAction(self.lang_manager.get_string("custom_emoji"), frame_edit_window)
+        menu_bar_custom_emoji.triggered.connect(set_custom_emoji)
+        menu_bar_emoji.addAction(menu_bar_custom_emoji)
+
+        add_btn.clicked.connect(save_new_frame)
+        emoji_edit.textEdited.connect(on_emoji_edit)
+
+        self._emoji_buffer = ''
+        self._custom_emoji_id_buffer = ''
+
+        frame_edit_window.setFocus()
+        frame_edit_window.exec_()
+
+    def edit_frame(self):
+        frame_edit_window = QDialog()
+        frame_edit_window.setWindowTitle(self.lang_manager.get_string("new_frame"))
+        frame_edit_window.setWindowIcon(self.icon)
+        frame_edit_window.setMinimumSize(QSize(190, 105))
+        frame_edit_window.setMaximumSize(QSize(190, 105))
+        frame_edit_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        frame_edit_window.setStyleSheet("QToolTip {background-color: black; color: white; border: black solid 1px}")
+
+        emoji_edit = QLineEdit(frame_edit_window)
+        emoji_edit.resize(22, 22)
+        emoji_edit.move(10, 35)
+        emoji_edit.setAlignment(Qt.AlignCenter)
+        emoji_edit.setPlaceholderText("😉")
+        emoji_edit.setToolTip(self.lang_manager.get_string("status_emoji"))
+
+        text_edit = QLineEdit(frame_edit_window)
+        text_edit.resize(140, 22)
+        text_edit.move(40, 35)
+
+        add_btn = QPushButton(self.lang_manager.get_string("add"), frame_edit_window)
+        add_btn.resize(170, 25)
+        add_btn.move(10, 71)
+        add_btn.setFont(QFont(self.btnFontFamily, 10))
+
+        def set_custom_emoji():
+            custom_emoji_window = QDialog()
+            custom_emoji_window.setWindowTitle(self.lang_manager.get_string("custom_emoji"))
+            custom_emoji_window.setWindowIcon(self.icon)
+            custom_emoji_window.setMinimumSize(QSize(350, 70))
+            custom_emoji_window.setMaximumSize(QSize(350, 70))
+            custom_emoji_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+            custom_emoji_window.setStyleSheet("QToolTip {background-color: black; color: white; border: black solid 1px}")
+
+            emoji_id_edit = QLineEdit(custom_emoji_window)
+            emoji_id_edit.resize(155, 22)
+            emoji_id_edit.move(10, 8)
+            emoji_id_edit.setPlaceholderText("ID")
+            emoji_id_edit.setToolTip(self.lang_manager.get_string("custom_emoji_id_tooltip"))
+
+            nitro_lbl = QLabel(self.lang_manager.get_string('nitro_warning'), custom_emoji_window)
+            nitro_lbl.setAlignment(Qt.AlignCenter)
+            nitro_lbl.resize(175, 22)
+            nitro_lbl.move(170, 20)
+
+            set_btn = QPushButton(self.lang_manager.get_string("set"), custom_emoji_window)
+            set_btn.resize(155, 25)
+            set_btn.move(10, 37)
+            set_btn.setFont(QFont(self.btnFontFamily, 10))
+
+            def save_custom_emoji():
+                emoji_id = emoji_id_edit.text().strip()
+                if emoji_id and not emoji_id.isdigit():
+                    logging.error("Failed to set custom emoji: ID is not a digit.")
+                    error_window = QMessageBox()
+                    error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                    error_window.setWindowIcon(QIcon("icon.ico"))
+                    error_window.setText(self.lang_manager.get_string("invalid_emoji_id"))
+                    error_window.setIcon(error_window.Warning)
+                    error_window.exec_()
+                    return
+
+                if emoji_id:
+                    self._custom_emoji_id_buffer = emoji_id_edit.text().strip()
+                    emoji_edit.setReadOnly(True)
+                    emoji_edit.setText('C')
+                else:
+                    self._custom_emoji_id_buffer = ''
+                    emoji_edit.setReadOnly(False)
+                    if emoji_edit.text() == 'C':
+                        emoji_edit.setText('')
+
+                custom_emoji_window.close()
+
+            emoji_id_edit.setText(self._custom_emoji_id_buffer)
+
+            set_btn.clicked.connect(save_custom_emoji)
+
+            custom_emoji_window.setFocus()
+            custom_emoji_window.exec_()
+
+        def on_emoji_edit():
+            try:
+                e_buffer = emoji_edit.text()[:1].encode('utf-8').decode('utf-8')
+                self._emoji_buffer = e_buffer
+                emoji_edit.setText(e_buffer)
+            except (UnicodeEncodeError, UnicodeDecodeError, UnicodeTranslateError):
+                self._emoji_buffer = ''
+                emoji_edit.setText('')
+
+        def save_edited_frame():
+            text = text_edit.text().strip()
+
+            if not text:
+                if self._emoji_buffer or self._custom_emoji_id_buffer:
+                    pass
+                else:
+                    logging.error("Failed to add new frame: Text field was empty.")
+                    error_window = QMessageBox()
+                    error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                    error_window.setWindowIcon(QIcon("icon.ico"))
+                    error_window.setText(self.lang_manager.get_string("input_status"))
+                    error_window.setIcon(error_window.Warning)
+                    error_window.exec_()
+                    text_edit.clear()
+                    return
+
+            edited_frame = {"str": text, "emoji": self._emoji_buffer}
+            if self._custom_emoji_id_buffer:
+                edited_frame['custom_emoji_id'] = int(self._custom_emoji_id_buffer)
+
+            selected_row = self.frames_list_edit.currentRow()
+
+            self.core.config["frames"][selected_row] = edited_frame
+
+            self.core.config_save()
+            self.frames_list_edit_filling()
+            self.frames_list_edit.setCurrentRow(selected_row)
+            frame_edit_window.close()
+
+        menu_bar = QMenuBar(frame_edit_window)
+        menu_bar.setFont(self.font9)
+        menu_bar_emoji = menu_bar.addMenu(self.lang_manager.get_string("more"))
+        menu_bar_custom_emoji = QAction(self.lang_manager.get_string("custom_emoji"), frame_edit_window)
+        menu_bar_custom_emoji.triggered.connect(set_custom_emoji)
+        menu_bar_emoji.addAction(menu_bar_custom_emoji)
+
+        add_btn.clicked.connect(save_edited_frame)
+        emoji_edit.textEdited.connect(on_emoji_edit)
+
+        self._emoji_buffer = self.core.config["frames"][self.frames_list_edit.currentRow()]["emoji"]
+        self._custom_emoji_id_buffer = str(self.core.config["frames"][self.frames_list_edit.currentRow()].get('custom_emoji_id', ''))
+
+        if self._custom_emoji_id_buffer:
+            emoji_edit.setReadOnly(True)
+            emoji_edit.setText('C')
+        else:
+            emoji_edit.setText(self._emoji_buffer)
+        text_edit.setText(self.core.config["frames"][self.frames_list_edit.currentRow()]["str"])
+
+        frame_edit_window.setFocus()
+        frame_edit_window.exec_()
+
+
+
+    def about(self):
+        about_window = QDialog()
+        about_window.setWindowTitle(self.lang_manager.get_string("about"))
+        about_window.setWindowIcon(self.icon)
+        about_window.setMinimumSize(QSize(350, 250))
+        about_window.setMaximumSize(QSize(350, 250))
+        about_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+
+        about_window_bg_label = QLabel("", about_window)
+        about_window_bg_label.setAlignment(Qt.AlignCenter)
+        about_window_bg_label.resize(350, 250)
+
+        y = 0
+        for k in authors_m:
+            lbl = QLabel(k, about_window)
+            lbl.setFont(self.font7)
+            lbl.setAlignment(Qt.AlignCenter)
+            txt_width = lbl.fontMetrics().boundingRect(lbl.text()).width()
+            txt_height = lbl.fontMetrics().boundingRect(lbl.text()).height()
+            lbl.move(350/2-txt_width/2, 250/2+(txt_height*y)-30)
+            y += 1
+
+        about_window_version_label = QLabel("Version: %s" % version_m, about_window)
+        about_window_version_label.setFont(self.font10)
+        about_window_version_label.setAlignment(Qt.AlignCenter)
+        txt_width = about_window_version_label.fontMetrics().boundingRect(about_window_version_label.text()).width()
+        about_window_version_label.move(350/2-txt_width/2, 250/2+40)
+
+        about_window_bg = QMovie("res/about-bg.gif")
+        about_window_bg_label.setMovie(about_window_bg)
+        about_window_bg.start()
+
+        about_window.exec_()
 
     def speed_change(self):
         self.core.config["delay"] = self.speed_edit.value()
         self.core.config_save()
-
-    def token_editing(self):
-        self.core.config["token"] = self.token_input.text()
-        self.token_input.setToolTip(self.lang_manager.get_string("your_token_tooltip")+self.core.config["token"])
-        self.core.config_save()
-
-    def resizeEvent(self, event):
-        size = (self.size().width(), self.size().height())
-        try:
-            if size == (400, 280):
-                self.core.config["hide_token_input"] = False
-                self.core.config_save()
-            elif size == (400, 250):
-                self.core.config["hide_token_input"] = True
-                self.core.config_save()
-        except:
-            pass
 
     def update_frame_screen(self):
         self.current_frame_screen.setText(self.current_frame)
@@ -639,19 +859,37 @@ class App(QWidget):
         self.current_frame_screen.setText("")
         self.info_screen.setText("")
 
+    def on_auth_failed(self):
+        self.stop()
+
+        if not self.isHidden():
+            error_window = QMessageBox()
+            error_window.setWindowTitle(self.lang_manager.get_string("error"))
+            error_window.setWindowIcon(self.icon)
+            error_window.setText(self.lang_manager.get_string("auth_failed"))
+            error_window.setIcon(error_window.Warning)
+            error_window.exec_()
+        else:
+            self.tray_icon.showMessage("Discord Animated Status",
+                                       self.lang_manager.get_string("auth_failed"),
+                                       self.icon, msecs=1000)
+
     def changeEvent(self, event):
         if self.windowState() == Qt.WindowMinimized:
             self.hide()
 
     def tray_click_checking(self, reason):
         if reason == QSystemTrayIcon.Trigger:
-            self.show()
-            self.showNormal()
+            self.maximize_window()
 
-            qtRectangle = self.frameGeometry()
-            centerPoint = QDesktopWidget().availableGeometry().center()
-            qtRectangle.moveCenter(centerPoint)
-            self.move(qtRectangle.topLeft())
+    def maximize_window(self):
+        self.show()
+        self.showNormal()
+
+        qtRectangle = self.frameGeometry()
+        centerPoint = QDesktopWidget().availableGeometry().center()
+        qtRectangle.moveCenter(centerPoint)
+        self.move(qtRectangle.topLeft())
 
     def close_app(self):
         self.tray_icon.hide()
@@ -665,6 +903,7 @@ class custom_signal(QObject):
     frameUpdated = pyqtSignal()
     infoUpdated = pyqtSignal()
     threadStopped = pyqtSignal()
+    authFailed = pyqtSignal()
 
 def apply_style(app):
     """Apply dark discord theme to application."""

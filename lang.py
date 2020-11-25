@@ -17,27 +17,14 @@ class LanguageManager(object):
         except KeyError:
             logging.error("Could not find textdata string '%s' for '%s' language!", string, self.selected_lang)
 
-    def load_language(self):
+    def load_language(self, lang):
         """Load language data from a config file."""
-        config = {}
-        try:
-            with open("config.json", encoding="utf-8") as cfg_file:
-                config = json.load(cfg_file)
-        except:
-            logging.warning("Failed to load language data! Setting current language to EN.")
+        if lang in self.supported_langs:
+            self.selected_lang = lang
+            logging.info('Selected lang is %s', str(lang).upper())
+        else:
+            logging.warning("Selected lang not supported! Setting current language to EN.")
             self.selected_lang = "en"
-            return
-        try:
-            if config["language"] in self.supported_langs:
-                self.selected_lang = config["language"]
-                return
-            logging.warning("Failed to load language data! Setting current language to EN.")
-            self.selected_lang = "en"
-            return
-        except:
-            logging.warning("Failed to load language data! Setting current language to EN.")
-            self.selected_lang = "en"
-            return
 
     def save_language(self):
         """Save language data to a config file."""
