@@ -1,12 +1,18 @@
 import os
 import sys
 import logging
+import argparse
 from datetime import datetime
 
 from gui import init_gui_application
 
 def entry():
     """Application entry point."""
+    args_parser = argparse.ArgumentParser()
+    args_parser.add_argument('-m', '--minimize', action='store_true', help='minimize app to tray on launch')
+    args_parser.add_argument('-r', '--run-animation', action='store_true', help='run status animation on launch')
+    launch_args = args_parser.parse_args()
+
     if not os.path.exists('logs'):
         os.makedirs('logs')
 
@@ -23,7 +29,7 @@ def entry():
 
     logging.info("--- LOG START ---")
 
-    code = init_gui_application()
+    code = init_gui_application(launch_args)
 
     logging.info("Program exit with code %s.", code)
     if code != 0:

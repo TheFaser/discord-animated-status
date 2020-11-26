@@ -14,12 +14,12 @@ from lang import LanguageManager
 class App(QWidget):
     """Main application class."""
 
-    def __init__(self):
+    def __init__(self, launch_args):
         super().__init__()
         self.lang_manager = LanguageManager()
         self.core = Core(self)
         self.requests_handler = RequestsThread(self.core, self)
-        self.init_gui()
+        self.init_gui(launch_args)
 
     def restart(self):
         """Restarts the program."""
@@ -69,7 +69,7 @@ class App(QWidget):
         
         return confirm_lang_change
 
-    def init_gui(self):
+    def init_gui(self, launch_args):
         """Initialize application layout."""
         self.setMinimumSize(QSize(400, 250))
         self.setMaximumSize(QSize(400, 250))
@@ -266,8 +266,6 @@ class App(QWidget):
 
         self.core.apply_config()
 
-        self.show()
-
         self.current_info = ""
 
         self.stop_btn.setEnabled(False)
@@ -296,37 +294,46 @@ class App(QWidget):
 
         self.requests_handler.finished.connect(self.on_requests_thread_stop)
 
-    def run_animation(self):
+        if not launch_args.minimize:
+            self.show()
+        if launch_args.run_animation:
+            self.run_animation(silent=True)
+
+    def run_animation(self, silent=False):
         """Run animated status."""
         logging.info("Starting animated status...")
         if self.core.config["frames"] == []:
-            self.show()
             logging.error("Failed to run animated status: Frame list is empty.")
-            error = QMessageBox()
-            error.setWindowTitle(self.lang_manager.get_string("error"))
-            error.setWindowIcon(self.icon)
-            error.setText(self.lang_manager.get_string("frame_list_empty"))
-            error.setIcon(error.Warning)
-            error.exec_()
+            if not silent:
+                self.maximize_window()
+                warning_window = QMessageBox()
+                warning_window.setWindowTitle(self.lang_manager.get_string("error"))
+                warning_window.setWindowIcon(self.icon)
+                warning_window.setText(self.lang_manager.get_string("frame_list_empty"))
+                warning_window.setIcon(warning_window.Warning)
+                warning_window.exec_()
         elif self.core.config["token"] == "":
-            self.show()
             logging.error("Failed to run animated status: Token is empty.")
-            error = QMessageBox()
-            error.setWindowTitle(self.lang_manager.get_string("error"))
-            error.setWindowIcon(self.icon)
-            error.setText(self.lang_manager.get_string("input_token"))
-            error.setIcon(error.Warning)
-            error.exec_()
+            if not silent:
+                self.maximize_window()
+                warning_window = QMessageBox()
+                warning_window.setWindowTitle(self.lang_manager.get_string("error"))
+                warning_window.setWindowIcon(self.icon)
+                warning_window.setText(self.lang_manager.get_string("input_token"))
+                warning_window.setIcon(warning_window.Warning)
+                warning_window.exec_()
         else:
             for char in self.core.config["token"]:
                 if char not in ASCII_CHARS:
                     logging.error("Failed to run animated status: Forbidden chars in token.")
-                    error = QMessageBox()
-                    error.setWindowTitle(self.lang_manager.get_string("error"))
-                    error.setWindowIcon(self.icon)
-                    error.setText(self.lang_manager.get_string("token_invalid"))
-                    error.setIcon(error.Warning)
-                    error.exec_()
+                    if not silent:
+                        self.maximize_window()
+                        warning_window = QMessageBox()
+                        warning_window.setWindowTitle(self.lang_manager.get_string("error"))
+                        warning_window.setWindowIcon(self.icon)
+                        warning_window.setText(self.lang_manager.get_string("token_invalid"))
+                        warning_window.setIcon(warning_window.Warning)
+                        warning_window.exec_()
                     break
             else:
                 self.run_btn.setEnabled(False)
@@ -915,10 +922,10 @@ def apply_style(app):
     palette.setColor(QPalette.Disabled, QPalette.Button, QColor(80, 93, 136))
     app.setPalette(palette)
 
-def init_gui_application():
+def init_gui_application(launch_args):
     app = QApplication(sys.argv)
     apply_style(app)
-    App()
+    App(launch_args)
     code = app.exec_()
 
     return code
