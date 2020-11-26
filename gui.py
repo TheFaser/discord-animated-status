@@ -1,8 +1,13 @@
+import sys
+import os
+import logging
+
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from required import logging, sys, os, ascii_chars, authors_m, version_m
+from constants import ASCII_CHARS, AUTHORS_M, VERSION_M
+
 from core import Core, RequestsThread
 from lang import LanguageManager
 
@@ -314,7 +319,7 @@ class App(QWidget):
             error.exec_()
         else:
             for char in self.core.config["token"]:
-                if char not in ascii_chars:
+                if char not in ASCII_CHARS:
                     logging.error("Failed to run animated status: Forbidden chars in token.")
                     error = QMessageBox()
                     error.setWindowTitle(self.lang_manager.get_string("error"))
@@ -807,7 +812,7 @@ class App(QWidget):
         about_window_bg_label.resize(350, 250)
 
         y = 0
-        for k in authors_m:
+        for k in AUTHORS_M:
             lbl = QLabel(k, about_window)
             lbl.setFont(self.font7)
             lbl.setAlignment(Qt.AlignCenter)
@@ -816,7 +821,7 @@ class App(QWidget):
             lbl.move(350/2-txt_width/2, 250/2+(txt_height*y)-30)
             y += 1
 
-        about_window_version_label = QLabel("Version: %s" % version_m, about_window)
+        about_window_version_label = QLabel("Version: %s" % VERSION_M, about_window)
         about_window_version_label.setFont(self.font10)
         about_window_version_label.setAlignment(Qt.AlignCenter)
         txt_width = about_window_version_label.fontMetrics().boundingRect(about_window_version_label.text()).width()

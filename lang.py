@@ -1,4 +1,5 @@
-from required import json, logging
+import json
+import logging
 
 class LanguageManager(object):
     """A class responsible for localization."""

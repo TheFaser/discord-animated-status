@@ -1,6 +1,13 @@
+import json
+import logging
+import time
+from datetime import datetime
+
+import requests
+
 from PyQt5.QtCore import QThread
 
-from required import json, logging, requests, datetime, api_url, time
+from constants import API_URL
 
 class Core(object):
     """Back-End class."""
@@ -158,9 +165,9 @@ class RequestsThread(QThread):
         """Parse animated status frame."""
         now = datetime.now()
         try:
-            mydata = requests.get(api_url+"/users/@me", headers=self.auth("get")).json(encoding="utf-8")
+            mydata = requests.get(API_URL + "/users/@me", headers=self.auth("get")).json(encoding="utf-8")
             frame["str"] = frame["str"].replace( "#curtime#", datetime.strftime(now, "%H:%M"))
-            servcount = len(requests.get(api_url + "/users/@me/guilds", headers=self.auth("get")).json(encoding="utf-8"))
+            servcount = len(requests.get(API_URL + "/users/@me/guilds", headers=self.auth("get")).json(encoding="utf-8"))
             frame["str"] = frame["str"].replace("#servcount#", str(servcount))
             frame["str"] = frame["str"].replace("#name#", mydata["username"])
             frame["str"] = frame["str"].replace("#id#", mydata["discriminator"])
@@ -199,7 +206,7 @@ class RequestsThread(QThread):
                                                          "expires_at": None}})
 
                 try:
-                    req = requests.patch(api_url+"/users/@me/settings", headers=self.auth("patch"), data=p_params)
+                    req = requests.patch(API_URL + "/users/@me/settings", headers=self.auth("patch"), data=p_params)
                     if req.status_code == 200:
                         if not frame["emoji"] and not frame.get('custom_emoji_id'):
                             self.gui.current_frame = frame["str"]

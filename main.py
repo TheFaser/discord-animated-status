@@ -1,7 +1,11 @@
+import os
+import sys
+import logging
+from datetime import datetime
+
 from PyQt5 import QtWidgets
 
 from gui import App, apply_style
-from required import sys, logging, os, datetime
 
 def entry():
     """Application entry point."""
