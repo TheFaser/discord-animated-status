@@ -3,9 +3,7 @@ import sys
 import logging
 from datetime import datetime
 
-from PyQt5 import QtWidgets
-
-from gui import App, apply_style
+from gui import init_gui_application
 
 def entry():
     """Application entry point."""
@@ -25,15 +23,12 @@ def entry():
 
     logging.info("--- LOG START ---")
 
-    win = QtWidgets.QApplication(sys.argv)
-    apply_style(win)
-    App()
-    code = win.exec_()
+    code = init_gui_application()
 
-    logging.info("Program exit with code %d.", code)
+    logging.info("Program exit with code %s.", code)
     if code != 0:
         logging.warning("Program exit code was not 0. This means something went wrong while executing the program.")
-    
+
     logging.info("--- LOG END ---")
     sys.exit(code)
 

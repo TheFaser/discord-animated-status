@@ -914,3 +914,11 @@ def apply_style(app):
     palette.setColor(QPalette.HighlightedText, Qt.black)
     palette.setColor(QPalette.Disabled, QPalette.Button, QColor(80, 93, 136))
     app.setPalette(palette)
+
+def init_gui_application():
+    app = QApplication(sys.argv)
+    apply_style(app)
+    App()
+    code = app.exec_()
+
+    return code
