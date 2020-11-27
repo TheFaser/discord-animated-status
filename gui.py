@@ -6,6 +6,11 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
+if sys.platform == 'win32':
+    import winshell
+else:
+    winshell = None
+
 from constants import ASCII_CHARS, AUTHORS_M, VERSION_M
 
 from core import Core, RequestsThread
@@ -140,9 +145,12 @@ class App(QWidget):
         self.menu_bar_settings_load.triggered.connect(self.core.config_load)
         self.menu_bar_settings_save = QAction(self.lang_manager.get_string("save_config"), self)
         self.menu_bar_settings_save.triggered.connect(self.core.config_save)
+        self.menu_bar_settings_autostart_on_boot = QAction(self.lang_manager.get_string("autostart_on_boot"), self)
+        self.menu_bar_settings_autostart_on_boot.triggered.connect(self.autostart_on_boot)
         self.menu_bar_settings.addAction(self.menu_bar_settings_token)
         self.menu_bar_settings.addAction(self.menu_bar_settings_save)
         self.menu_bar_settings.addAction(self.menu_bar_settings_load)
+        self.menu_bar_settings.addAction(self.menu_bar_settings_autostart_on_boot)
 
         self.menu_bar_language = self.menu_bar.addMenu(self.lang_manager.get_string("language"))
         for lang in self.lang_manager.supported_langs:  # For each supported language
@@ -805,6 +813,103 @@ class App(QWidget):
 
         frame_edit_window.setFocus()
         frame_edit_window.exec_()
+
+    def autostart_on_boot(self):
+        if sys.platform not in ('win32',):
+            logging.error("Autostart feature cannot be enabled. Not supported platform detected: %s", sys.platform)
+            error_window = QMessageBox()
+            error_window.setWindowTitle(self.lang_manager.get_string("error"))
+            error_window.setWindowIcon(QIcon("icon.ico"))
+            error_window.setText(self.lang_manager.get_string("autostart_not_supported"))
+            error_window.setIcon(error_window.Warning)
+            error_window.exec_()
+            return
+
+        autostart_on_boot_window = QDialog()
+        autostart_on_boot_window.setWindowTitle(self.lang_manager.get_string("autostart_on_boot"))
+        autostart_on_boot_window.setWindowIcon(self.icon)
+        autostart_on_boot_window.setMinimumSize(QSize(370, 45))
+        autostart_on_boot_window.setMaximumSize(QSize(370, 45))
+        autostart_on_boot_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        autostart_on_boot_window.setStyleSheet("QToolTip {background-color: black; color: white; border: black solid 1px}")
+
+        enable_btn = QPushButton(self.lang_manager.get_string("enable"), autostart_on_boot_window)
+        enable_btn.resize(170, 25)
+        enable_btn.move(10, 10)
+        enable_btn.setFont(QFont(self.btnFontFamily, 10))
+
+        disable_btn = QPushButton(self.lang_manager.get_string("disable"), autostart_on_boot_window)
+        disable_btn.resize(170, 25)
+        disable_btn.move(190, 10)
+        disable_btn.setFont(QFont(self.btnFontFamily, 10))
+
+        def enable_autostart():
+            try:
+                if sys.platform == 'win32':
+                    if sys.argv[0] == 'main.py': # if the app launches as a script
+                        link_args = 'main.py --minimize -r'
+                        link_icon_loc = (os.path.join(os.path.abspath(os.getcwd()), 'res/icon.ico'), 0)
+                    else: # if compiled by pyinstaller
+                        link_args = '--minimize -r' 
+                        link_icon_loc = (sys.executable, 0)
+
+                    link_path = os.path.join(winshell.startup(), 'discord-animated-status.lnk')
+                    with winshell.shortcut(link_path) as link:
+                        link.path = sys.executable
+                        link.working_directory = os.path.abspath(os.getcwd())
+                        link.arguments = link_args
+                        link.icon_location = link_icon_loc
+                        link.description = "Discord Animated Status autorun link. You can disable autorun in application."
+
+                logging.info('Autostart on system boot is currently enabled. (%s)', sys.platform)
+
+                success_window = QMessageBox()
+                success_window.setWindowTitle(self.lang_manager.get_string("success"))
+                success_window.setWindowIcon(self.icon)
+                success_window.setIcon(QMessageBox.NoIcon)
+                success_window.setText(self.lang_manager.get_string("autostart_enabled"))
+                success_window.exec_()
+
+            except Exception as error:
+                logging.error("Failed to enable autostart on system boot (%s): %s", sys.platform, repr(error))
+                error_window = QMessageBox()
+                error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                error_window.setWindowIcon(self.icon)
+                error_window.setText(self.lang_manager.get_string("error_has_occurred") % repr(error))
+                error_window.setIcon(QMessageBox.Warning)
+                error_window.exec_()
+
+        def disable_autostart():
+            try:
+                if sys.platform == 'win32':
+                    link_path = os.path.join(winshell.startup(), 'discord-animated-status.lnk')
+
+                    if os.path.isfile(link_path):
+                        os.remove(link_path)
+
+                logging.info('Autostart on system boot is currently disabled. (%s)', sys.platform)
+
+                success_window = QMessageBox()
+                success_window.setWindowTitle(self.lang_manager.get_string("success"))
+                success_window.setWindowIcon(self.icon)
+                success_window.setIcon(QMessageBox.NoIcon)
+                success_window.setText(self.lang_manager.get_string("autostart_disabled"))
+                success_window.exec_()
+
+            except Exception as error:
+                logging.error("Failed to disable autostart on system boot (%s): %s", sys.platform, repr(error))
+                error_window = QMessageBox()
+                error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                error_window.setWindowIcon(self.icon)
+                error_window.setText(self.lang_manager.get_string("error_has_occurred") % repr(error))
+                error_window.setIcon(QMessageBox.Warning)
+                error_window.exec_()
+
+        enable_btn.clicked.connect(enable_autostart)
+        disable_btn.clicked.connect(disable_autostart)
+
+        autostart_on_boot_window.setFocus()
+        autostart_on_boot_window.exec_()
 
     def about(self):
         about_window = QDialog()
