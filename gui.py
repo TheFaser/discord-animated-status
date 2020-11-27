@@ -1028,6 +1028,15 @@ def apply_style(app):
     app.setPalette(palette)
 
 def init_gui_application(launch_args):
+    if os.path.exists('res'):
+        for filepath in ('res/lang.json', 'res/uni-sans.ttf', 'res/icon.ico'):
+            if not os.path.isfile(filepath):
+                logging.critical('Application resources not found: %s', filepath)
+                return 2
+    else:
+        logging.critical('Application resources not found: "res" folder')
+        return 2
+
     app = QApplication(sys.argv)
     apply_style(app)
     App(launch_args)
