@@ -48,7 +48,7 @@ class Core(object):
         if "frames" not in self.config:
             self.config["frames"] = []
         elif not isinstance(self.config["frames"], list):
-            self.config["frames"] = []
+            logging.critical('Invalid config: frames must be a list')
 
         try:
             if self.config["delay"] < 1:
