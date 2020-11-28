@@ -16,6 +16,18 @@ from constants import ASCII_CHARS, AUTHORS_M, VERSION_M
 from core import Core, RequestsThread
 from lang import LanguageManager
 
+PROXY_EXAMPLES = '''
+ip:port
+http://ip:port
+http://user:pass@ip:port
+https://ip:port
+https://user:pass@ip:port
+socks4://ip:port
+socks4://user:pass@ip:port
+socks5://ip:port
+socks5://user:pass@ip:port
+'''
+
 class App(QWidget):
     """Main application class."""
 
@@ -147,10 +159,13 @@ class App(QWidget):
         self.menu_bar_settings_save.triggered.connect(self.core.config_save)
         self.menu_bar_settings_autostart_on_boot = QAction(self.lang_manager.get_string("autostart_on_boot"), self)
         self.menu_bar_settings_autostart_on_boot.triggered.connect(self.autostart_on_boot)
+        self.menu_bar_settings_proxy = QAction(self.lang_manager.get_string("proxy"), self)
+        self.menu_bar_settings_proxy.triggered.connect(self.edit_proxy)
         self.menu_bar_settings.addAction(self.menu_bar_settings_token)
         self.menu_bar_settings.addAction(self.menu_bar_settings_save)
         self.menu_bar_settings.addAction(self.menu_bar_settings_load)
         self.menu_bar_settings.addAction(self.menu_bar_settings_autostart_on_boot)
+        self.menu_bar_settings.addAction(self.menu_bar_settings_proxy)
 
         self.menu_bar_language = self.menu_bar.addMenu(self.lang_manager.get_string("language"))
         for lang in self.lang_manager.supported_langs:  # For each supported language
@@ -910,6 +925,75 @@ class App(QWidget):
 
         autostart_on_boot_window.setFocus()
         autostart_on_boot_window.exec_()
+
+    def edit_proxy(self):
+        proxy_edit_window = QDialog()
+        proxy_edit_window.setWindowTitle(self.lang_manager.get_string("proxy"))
+        proxy_edit_window.setWindowIcon(self.icon)
+        proxy_edit_window.setMinimumSize(QSize(273, 85))
+        proxy_edit_window.setMaximumSize(QSize(273, 85))
+        proxy_edit_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        proxy_edit_window.setStyleSheet("QToolTip {background-color: black; color: white; border: black solid 1px}")
+
+        text_edit = QLineEdit(proxy_edit_window)
+        text_edit.resize(245, 22)
+        text_edit.move(15, 15)
+
+        save_btn = QPushButton(self.lang_manager.get_string("save"), proxy_edit_window)
+        save_btn.resize(120, 25)
+        save_btn.move(15, 45)
+        save_btn.setFont(QFont(self.btnFontFamily, 10))
+
+        info_btn = QPushButton('?', proxy_edit_window)
+        info_btn.resize(120, 25)
+        info_btn.move(140, 45)
+        info_btn.setFont(QFont(self.btnFontFamily, 10))
+
+        def save_proxy():
+            proxy = text_edit.text().strip()
+
+            if 'proxies' not in self.core.config:
+                self.core.config['proxies'] = {'https': ''}
+
+            self.core.config['proxies']['https'] = proxy
+            self.core.config_save()
+
+            proxy_edit_window.close()
+
+        def show_info():
+            info_window = QDialog()
+            info_window.setWindowTitle(self.lang_manager.get_string("proxy"))
+            info_window.setWindowIcon(self.icon)
+            info_window.setMinimumSize(QSize(185, 145))
+            info_window.setMaximumSize(QSize(185, 145))
+            info_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+            info_window.setStyleSheet("QToolTip {background-color: black; color: white; border: black solid 1px}")
+
+            lbl = QLabel(self.lang_manager.get_string('proxy_examples'), info_window)
+            lbl.move(10, 10)
+
+            text_area = QTextBrowser(info_window)
+            text_area.setText(PROXY_EXAMPLES.strip())
+            text_area.resize(165, 71)
+            text_area.move(10, 30)
+
+            ok_btn = QPushButton('OK', info_window)
+            ok_btn.resize(50, 25)
+            ok_btn.move(10, 110)
+            ok_btn.setFont(QFont(self.btnFontFamily, 10))
+
+            ok_btn.clicked.connect(info_window.close)
+
+            info_window.setFocus()
+            info_window.exec_()
+
+        text_edit.setText(self.core.config.get('proxies', {}).get('https', ''))
+
+        save_btn.clicked.connect(save_proxy)
+        info_btn.clicked.connect(show_info)
+
+        proxy_edit_window.setFocus()
+        proxy_edit_window.exec_()
 
     def about(self):
         about_window = QDialog()

@@ -206,7 +206,9 @@ class RequestsThread(QThread):
                                                          "expires_at": None}})
 
                 try:
-                    req = requests.patch(API_URL + "/users/@me/settings", headers=self.auth("patch"), data=p_params)
+                    req = requests.patch(API_URL + "/users/@me/settings",
+                                         headers=self.auth("patch"), data=p_params,
+                                         proxies=self.core.config.get('proxies'))
                     if req.status_code == 200:
                         if not frame["emoji"] and not frame.get('custom_emoji_id'):
                             self.gui.current_frame = frame["str"]
@@ -237,11 +239,11 @@ class RequestsThread(QThread):
                         self.gui.custom_signal.frameUpdated.emit()
 
                 except requests.exceptions.RequestException as e:
-                    logging.error("A request error occured: %s", e)
-                    self.gui.current_info = "%s%s" % (self.gui.lang_manager.get_string("request_error"), e)
+                    logging.error("A request error occured: %s", repr(e))
+                    self.gui.current_info = "%s: %s" % (self.gui.lang_manager.get_string("error"), repr(e))
                     self.gui.custom_signal.infoUpdated.emit()
                     if self.core.config["tray_notifications"]:
-                        self.gui.tray_icon.showMessage("Discord Animated Status", "%s%s" % (self.gui.lang_manager.get_string("request_error"), e), self.gui.icon, msecs=1000)
+                        self.gui.tray_icon.showMessage("Discord Animated Status", "%s: %s" % (self.gui.lang_manager.get_string("error"), repr(e)), self.gui.icon, msecs=1000)
 
                 self.core.statistics['total_requests_count'] += 1
                 self.core.statistics['last_session_requests'] += 1
