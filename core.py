@@ -176,9 +176,11 @@ class RequestsThread(QThread):
         """Parse animated status frame."""
         now = datetime.now()
         try:
-            mydata = requests.get(API_URL + "/users/@me", headers=self.auth("get")).json(encoding="utf-8")
-            frame["str"] = frame["str"].replace( "#curtime#", datetime.strftime(now, "%H:%M"))
-            servcount = len(requests.get(API_URL + "/users/@me/guilds", headers=self.auth("get")).json(encoding="utf-8"))
+            mydata = requests.get(API_URL + "/users/@me", headers=self.auth("get"),
+                                  proxies=self.core.config.get('proxies')).json(encoding="utf-8")
+            frame["str"] = frame["str"].replace("#curtime#", datetime.strftime(now, "%H:%M"))
+            servcount = len(requests.get(API_URL + "/users/@me/guilds", headers=self.auth("get"),
+                                         proxies=self.core.config.get('proxies')).json(encoding="utf-8"))
             frame["str"] = frame["str"].replace("#servcount#", str(servcount))
             frame["str"] = frame["str"].replace("#name#", mydata["username"])
             frame["str"] = frame["str"].replace("#id#", mydata["discriminator"])
