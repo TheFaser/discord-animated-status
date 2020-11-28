@@ -31,7 +31,7 @@ class Core(object):
             config = self.load_old_config()
             if not config:
                 logging.info("Creating default config...")
-                config = {"token": "", "frames": [], "delay": 3, "language": "en", "tray_notifications": True}
+                config = {"token": "", "frames": [], "delay": 3, "language": "en", "tray_notifications": True, "proxies": {"https": ""}}
                 self.config_save(gui_emit=False, old_file=False, config=config)
 
         except Exception as error:
@@ -39,7 +39,7 @@ class Core(object):
             config = self.load_old_config()
             if not config:
                 logging.info("Creating default config...")
-                config = {"token": "", "frames": [], "delay": 3, "language": "en", "tray_notifications": True}
+                config = {"token": "", "frames": [], "delay": 3, "language": "en", "tray_notifications": True, "proxies": {"https": ""}}
                 self.config_save(gui_emit=False, old_file=False, config=config)
 
         finally:
@@ -61,6 +61,11 @@ class Core(object):
 
         if "tray_notifications" not in self.config:
             self.config["tray_notifications"] = True
+
+        if "proxies" not in self.config:
+            self.config["proxies"] = {"https": ""}
+        elif not isinstance(self.config["proxies"], dict):
+            logging.critical('Invalid config: proxies must be a dict')
 
         if config != self.config:
             self.config_save(gui_emit=False)
