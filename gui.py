@@ -258,18 +258,22 @@ class App(QWidget):
         # ++ DELAY SECTION
 
         lbl = QLabel(self.lang_manager.get_string("delay_s"), self)
-        lbl.move(224, 150)
+        lbl.move(224, 140)
         lbl.setFont(self.font9)
 
         self.speed_edit = QSpinBox(self)
         self.speed_edit.resize(40, 20)
-        self.speed_edit.move(348, 148)
+        self.speed_edit.move(348, 138)
         self.speed_edit.setRange(1, 999)
         self.speed_edit.setToolTip(self.lang_manager.get_string("delay_info"))
 
         # ++ END DELAY SECTION
 
         # ++ CONTROLS SECTION
+
+        self.randomize_frames_checkbox = QCheckBox(self.lang_manager.get_string('randomize_frames'), self)
+        self.randomize_frames_checkbox.move(224, 157)
+        self.randomize_frames_checkbox.setFont(self.font9)
 
         self.run_btn = QPushButton(self.lang_manager.get_string("launch"), self)
         self.run_btn.resize(167, 25)
@@ -303,6 +307,7 @@ class App(QWidget):
         self.add_frame_btn.clicked.connect(self.add_frame)
         self.remove_frame_btn.clicked.connect(self.remove_frame)
         self.speed_edit.valueChanged.connect(self.speed_change)
+        self.randomize_frames_checkbox.stateChanged.connect(self.switch_frames_randomizing)
 
         self.tray_icon.activated.connect(self.tray_click_checking)
         self.tray_icon.messageClicked.connect(self.maximize_window)
@@ -1031,6 +1036,10 @@ class App(QWidget):
 
     def speed_change(self):
         self.core.config["delay"] = self.speed_edit.value()
+        self.core.config_save()
+
+    def switch_frames_randomizing(self):
+        self.core.config["randomize_frames"] = not self.core.config["randomize_frames"]
         self.core.config_save()
 
     def update_frame_screen(self):

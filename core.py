@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 import time
 from datetime import datetime
 
@@ -56,6 +57,9 @@ class Core(object):
         except (KeyError, TypeError):
             self.config["delay"] = 3
 
+        if 'randomize_frames' not in self.config:
+            self.config['randomize_frames'] = False
+
         if 'language' not in self.config:
             self.config['language'] = "en"
 
@@ -73,6 +77,8 @@ class Core(object):
     def apply_config(self):
         self.gui.speed_edit.setValue(self.config['delay'])
         self.gui.frames_list_edit_filling()
+        if self.config['randomize_frames']:
+            self.gui.randomize_frames_checkbox.toggle()
 
     def load_old_config(self):
         logging.info('Reading config.old file...')
@@ -195,63 +201,70 @@ class RequestsThread(QThread):
         self.core.statistics['last_session_requests'] = 0
         self.core.save_statistics()
 
+        i = -1
         while True:
-            for item in self.core.config["frames"]:
-                frame = item.copy()
+            if self.core.config['randomize_frames']:
+                i = random.randint(0, len(self.core.config['frames']) - 1)
+                frame = self.core.config['frames'][i]
+            else:
+                i += 1
+                if i >= len(self.core.config['frames']):
+                    i = 0
+                frame = self.core.config["frames"][i]
 
-                # useless requests are disabled if string variables not found in frame
-                for var in ('#curtime#', '#servcount#', '#name#', '#id#'):
-                    if var in frame['str']:
-                        self.parse_frame(frame)
-                        break
+            # useless requests are disabled if string variables not found in frame
+            for var in ('#curtime#', '#servcount#', '#name#', '#id#'):
+                if var in frame['str']:
+                    self.parse_frame(frame)
+                    break
 
-                p_params = json.dumps({"custom_status": {"text": frame.get("str"),
-                                                         "emoji_id": frame.get('custom_emoji_id'),
-                                                         "emoji_name": frame.get('emoji'),
-                                                         "expires_at": None}})
+            p_params = json.dumps({"custom_status": {"text": frame.get("str"),
+                                                     "emoji_id": frame.get('custom_emoji_id'),
+                                                     "emoji_name": frame.get('emoji'),
+                                                     "expires_at": None}})
 
-                try:
-                    req = requests.patch(API_URL + "/users/@me/settings",
-                                         headers=self.auth("patch"), data=p_params,
-                                         proxies=self.core.config.get('proxies'))
-                    if req.status_code == 200:
-                        if not frame["emoji"] and not frame.get('custom_emoji_id'):
-                            self.gui.current_frame = frame["str"]
-                        elif frame.get('custom_emoji_id'):
-                            self.gui.current_frame = "C | " + frame["str"]
-                        else:
-                            self.gui.current_frame = frame["emoji"] + " | " + frame["str"]
-                        self.gui.custom_signal.frameUpdated.emit()
-                        if self.gui.current_info != "":
-                            self.gui.current_info = ""
-                            self.gui.custom_signal.infoUpdated.emit()
-                    elif req.status_code == 429:  # Never create request overflow
-                        logging.error("Discord XRate exceeded. Sleeping for 30 to let Discord rest.")
-                        self.gui.current_info = self.gui.lang_manager.get_string("xrate_exceeded")
+            try:
+                req = requests.patch(API_URL + "/users/@me/settings",
+                                     headers=self.auth("patch"), data=p_params,
+                                     proxies=self.core.config.get('proxies'))
+                if req.status_code == 200:
+                    if not frame["emoji"] and not frame.get('custom_emoji_id'):
+                        self.gui.current_frame = frame["str"]
+                    elif frame.get('custom_emoji_id'):
+                        self.gui.current_frame = "C | " + frame["str"]
+                    else:
+                        self.gui.current_frame = frame["emoji"] + " | " + frame["str"]
+                    self.gui.custom_signal.frameUpdated.emit()
+                    if self.gui.current_info != "":
+                        self.gui.current_info = ""
                         self.gui.custom_signal.infoUpdated.emit()
-                        if self.core.config["tray_notifications"]:
-                            self.gui.tray_icon.showMessage("Discord Animated Status", self.gui.lang_manager.get_string("xrate_exceeded"), self.gui.icon, msecs=1000)
-                        time.sleep(30)
-                    elif req.status_code == 401:
-                        logging.error("Failed to authorize in Discord. Thread stopping...")
-                        self.gui.custom_signal.authFailed.emit()
-                        return
-                    elif req.status_code == 400:
-                        logging.error("Bad Request (400)")
-                        self.gui.current_info = "Bad Request (400)"
-                        self.gui.custom_signal.infoUpdated.emit()
-                        self.gui.current_frame = frame['str']
-                        self.gui.custom_signal.frameUpdated.emit()
-
-                except requests.exceptions.RequestException as e:
-                    logging.error("A request error occured: %s", repr(e))
-                    self.gui.current_info = "%s: %s" % (self.gui.lang_manager.get_string("error"), repr(e))
+                elif req.status_code == 429:  # Never create request overflow
+                    logging.error("Discord XRate exceeded. Sleeping for 30 to let Discord rest.")
+                    self.gui.current_info = self.gui.lang_manager.get_string("xrate_exceeded")
                     self.gui.custom_signal.infoUpdated.emit()
                     if self.core.config["tray_notifications"]:
-                        self.gui.tray_icon.showMessage("Discord Animated Status", "%s: %s" % (self.gui.lang_manager.get_string("error"), repr(e)), self.gui.icon, msecs=1000)
+                        self.gui.tray_icon.showMessage("Discord Animated Status", self.gui.lang_manager.get_string("xrate_exceeded"), self.gui.icon, msecs=1000)
+                    time.sleep(30)
+                elif req.status_code == 401:
+                    logging.error("Failed to authorize in Discord. Thread stopping...")
+                    self.gui.custom_signal.authFailed.emit()
+                    return
+                elif req.status_code == 400:
+                    logging.error("Bad Request (400)")
+                    self.gui.current_info = "Bad Request (400)"
+                    self.gui.custom_signal.infoUpdated.emit()
+                    self.gui.current_frame = frame['str']
+                    self.gui.custom_signal.frameUpdated.emit()
 
-                self.core.statistics['total_requests_count'] += 1
-                self.core.statistics['last_session_requests'] += 1
-                self.core.save_statistics()
+            except requests.exceptions.RequestException as e:
+                logging.error("A request error occured: %s", repr(e))
+                self.gui.current_info = "%s: %s" % (self.gui.lang_manager.get_string("error"), repr(e))
+                self.gui.custom_signal.infoUpdated.emit()
+                if self.core.config["tray_notifications"]:
+                    self.gui.tray_icon.showMessage("Discord Animated Status", "%s: %s" % (self.gui.lang_manager.get_string("error"), repr(e)), self.gui.icon, msecs=1000)
 
-                time.sleep(self.core.config["delay"])
+            self.core.statistics['total_requests_count'] += 1
+            self.core.statistics['last_session_requests'] += 1
+            self.core.save_statistics()
+
+            time.sleep(self.core.config["delay"])
