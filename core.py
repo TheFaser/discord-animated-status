@@ -207,12 +207,12 @@ class RequestsThread(QThread):
         while True:
             if self.core.config['randomize_frames']:
                 i = random.randint(0, len(self.core.config['frames']) - 1)
-                frame = self.core.config['frames'][i]
+                frame = self.core.config['frames'][i].copy()
             else:
                 i += 1
                 if i >= len(self.core.config['frames']):
                     i = 0
-                frame = self.core.config["frames"][i]
+                frame = self.core.config["frames"][i].copy()
 
             # useless requests are disabled if string variables not found in frame
             for var in ('#curtime#', '#servcount#', '#name#', '#id#'):
