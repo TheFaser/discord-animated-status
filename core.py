@@ -75,10 +75,13 @@ class Core(object):
             self.config_save(gui_emit=False)
 
     def apply_config(self):
+        logging.info('Config applying...')
         self.gui.speed_edit.setValue(self.config['delay'])
         self.gui.frames_list_edit_filling()
         if self.config['randomize_frames']:
             self.gui.randomize_frames_checkbox.toggle()
+
+        logging.info('Config applied.')
 
     def load_old_config(self):
         logging.info('Reading config.old file...')

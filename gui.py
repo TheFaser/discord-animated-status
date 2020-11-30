@@ -154,7 +154,7 @@ class App(QWidget):
         self.menu_bar_settings_token = QAction(self.lang_manager.get_string("token"), self)
         self.menu_bar_settings_token.triggered.connect(self.edit_token)
         self.menu_bar_settings_load = QAction(self.lang_manager.get_string("load_config"), self)
-        self.menu_bar_settings_load.triggered.connect(self.core.config_load)
+        self.menu_bar_settings_load.triggered.connect(self.reload_config)
         self.menu_bar_settings_save = QAction(self.lang_manager.get_string("save_config"), self)
         self.menu_bar_settings_save.triggered.connect(self.core.config_save)
         self.menu_bar_settings_autostart_on_boot = QAction(self.lang_manager.get_string("autostart_on_boot"), self)
@@ -1033,6 +1033,10 @@ class App(QWidget):
         about_window_bg.start()
 
         about_window.exec_()
+
+    def reload_config(self):
+        self.core.config_load()
+        self.core.apply_config()
 
     def speed_change(self):
         self.core.config["delay"] = self.speed_edit.value()
