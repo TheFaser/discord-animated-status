@@ -1,6 +1,7 @@
 import sys
 import os
 import logging
+import time
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -43,6 +44,14 @@ class App(QWidget):
         logging.info("Forced restart. Restarting...")
         self.core.config_save()
         self.tray_icon.hide()
+        if self.core.rpc:
+            try:
+                if self.core.rpc.loop.is_running():
+                    self.core.rpc.loop.stop()
+                else:
+                    self.core.rpc.close()
+            except Exception as error:
+                logging.error('Failed to close RPC: %s', repr(error))
         scr = sys.executable
         os.execl(scr, '"%s"' % scr, *sys.argv)
 
@@ -99,8 +108,12 @@ class App(QWidget):
         # + PRESETS SECTION
 
         font_db = QFontDatabase()
-        font_id = font_db.addApplicationFont("res/uni-sans.ttf")
-        self.btnFontFamily = font_db.applicationFontFamilies(font_id)[0]
+        uni_sans_id = font_db.addApplicationFont('res/uni-sans.ttf')
+        whitney_bold_id = font_db.addApplicationFont('res/whitney_bold.ttf')
+        whitney_medium_id = font_db.addApplicationFont('res/whitney_medium.ttf')
+        self.btnFontFamily = font_db.applicationFontFamilies(uni_sans_id)[0]
+        self.whitney_bold = font_db.applicationFontFamilies(whitney_bold_id)[0]
+        self.whitney_medium = font_db.applicationFontFamilies(whitney_medium_id)[0]
 
         self.font14 = QFont()
         self.font14.setPointSize(14)
@@ -119,6 +132,14 @@ class App(QWidget):
         self.font7.setFamily("Consolas")
         self.font7.setBold(True)
         self.font7.setPointSize(12)
+
+        self.whitney_bold_9 = QFont()
+        self.whitney_bold_9.setFamily(self.whitney_bold)
+        self.whitney_bold_9.setPointSize(9)
+
+        self.whitney_medium_10 = QFont()
+        self.whitney_medium_10.setFamily(self.whitney_medium)
+        self.whitney_medium_10.setPointSize(10)
 
         self.setWindowTitle("Discord Animated Status")
         self.icon = QIcon("res/icon.ico")
@@ -161,11 +182,14 @@ class App(QWidget):
         self.menu_bar_settings_autostart_on_boot.triggered.connect(self.autostart_on_boot)
         self.menu_bar_settings_proxy = QAction(self.lang_manager.get_string("proxy"), self)
         self.menu_bar_settings_proxy.triggered.connect(self.edit_proxy)
+        self.menu_bar_settings_discord_rpc = QAction("Discord RPC", self)
+        self.menu_bar_settings_discord_rpc.triggered.connect(self.default_discord_rpc_edit)
         self.menu_bar_settings.addAction(self.menu_bar_settings_token)
         self.menu_bar_settings.addAction(self.menu_bar_settings_save)
         self.menu_bar_settings.addAction(self.menu_bar_settings_load)
         self.menu_bar_settings.addAction(self.menu_bar_settings_autostart_on_boot)
         self.menu_bar_settings.addAction(self.menu_bar_settings_proxy)
+        self.menu_bar_settings.addAction(self.menu_bar_settings_discord_rpc)
 
         self.menu_bar_language = self.menu_bar.addMenu(self.lang_manager.get_string("language"))
         for lang in self.lang_manager.supported_langs:  # For each supported language
@@ -291,8 +315,6 @@ class App(QWidget):
 
         # + END MAIN SECTION
 
-        self.core.apply_config()
-
         self.current_info = ""
 
         self.stop_btn.setEnabled(False)
@@ -321,6 +343,8 @@ class App(QWidget):
         self.custom_signal.authFailed.connect(self.on_auth_failed)
 
         self.requests_handler.finished.connect(self.on_requests_thread_stop)
+
+        self.core.apply_config()
 
         if not launch_args.minimize:
             self.show()
@@ -1000,6 +1024,295 @@ class App(QWidget):
         proxy_edit_window.setFocus()
         proxy_edit_window.exec_()
 
+    def default_discord_rpc_edit(self):
+        rpc_edit_window = QDialog()
+        rpc_edit_window.setWindowTitle("Discord RPC")
+        rpc_edit_window.setWindowIcon(self.icon)
+        rpc_edit_window.setMinimumSize(QSize(490, 330))
+        rpc_edit_window.setMaximumSize(QSize(490, 330))
+        rpc_edit_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        rpc_edit_window.setStyleSheet("QToolTip {background-color: black; color: white; border: black solid 1px}")
+
+
+        lbl = QLabel('STATE', rpc_edit_window)
+        lbl.move(15, 15)
+        lbl.setFont(self.whitney_bold_9)
+
+        state_edit = QLineEdit(rpc_edit_window)
+        state_edit.resize(225, 22)
+        state_edit.move(15, 35)
+        state_edit.setFont(self.whitney_medium_10)
+
+        lbl = QLabel('DETAILS', rpc_edit_window)
+        lbl.move(250, 15)
+        lbl.setFont(self.whitney_bold_9)
+
+        details_edit = QLineEdit(rpc_edit_window)
+        details_edit.resize(225, 22)
+        details_edit.move(250, 35)
+        details_edit.setFont(self.whitney_medium_10)
+
+
+        lbl = QLabel('START TIMESTAMP', rpc_edit_window)
+        lbl.move(15, 65)
+        lbl.setFont(self.whitney_bold_9)
+
+        start_timestamp_edit = QLineEdit(rpc_edit_window)
+        start_timestamp_edit.resize(225, 22)
+        start_timestamp_edit.move(15, 85)
+        start_timestamp_edit.setFont(self.whitney_medium_10)
+
+        lbl = QLabel('END TIMESTAMP', rpc_edit_window)
+        lbl.move(250, 65)
+        lbl.setFont(self.whitney_bold_9)
+
+        end_timestamp_edit = QLineEdit(rpc_edit_window)
+        end_timestamp_edit.resize(225, 22)
+        end_timestamp_edit.move(250, 85)
+        end_timestamp_edit.setFont(self.whitney_medium_10)
+
+
+        lbl = QLabel('LARGE IMAGE KEY', rpc_edit_window)
+        lbl.move(15, 115)
+        lbl.setFont(self.whitney_bold_9)
+
+        large_image_key_edit = QLineEdit(rpc_edit_window)
+        large_image_key_edit.resize(225, 22)
+        large_image_key_edit.move(15, 135)
+        large_image_key_edit.setFont(self.whitney_medium_10)
+
+        lbl = QLabel('LARGE IMAGE TEXT', rpc_edit_window)
+        lbl.move(250, 115)
+        lbl.setFont(self.whitney_bold_9)
+
+        large_image_text_edit = QLineEdit(rpc_edit_window)
+        large_image_text_edit.resize(225, 22)
+        large_image_text_edit.move(250, 135)
+        large_image_text_edit.setFont(self.whitney_medium_10)
+
+
+        lbl = QLabel('SMALL IMAGE KEY', rpc_edit_window)
+        lbl.move(15, 165)
+        lbl.setFont(self.whitney_bold_9)
+
+        small_image_key_edit = QLineEdit(rpc_edit_window)
+        small_image_key_edit.resize(225, 22)
+        small_image_key_edit.move(15, 185)
+        small_image_key_edit.setFont(self.whitney_medium_10)
+
+        lbl = QLabel('SMALL IMAGE TEXT', rpc_edit_window)
+        lbl.move(250, 165)
+        lbl.setFont(self.whitney_bold_9)
+
+        small_image_text_edit = QLineEdit(rpc_edit_window)
+        small_image_text_edit.resize(225, 22)
+        small_image_text_edit.move(250, 185)
+        small_image_text_edit.setFont(self.whitney_medium_10)
+
+
+        lbl = QLabel('CLIENT ID', rpc_edit_window)
+        lbl.move(15, 225)
+        lbl.setFont(self.whitney_bold_9)
+
+        client_id_edit = QLineEdit(rpc_edit_window)
+        client_id_edit.resize(225, 22)
+        client_id_edit.move(15, 245)
+        client_id_edit.setFont(self.whitney_medium_10)
+
+
+        rpc_status_lbl = QLabel(rpc_edit_window)
+        rpc_status_lbl.resize(225, 22)
+        rpc_status_lbl.move(250, 245)
+        rpc_status_lbl.setFont(self.whitney_bold_9)
+        rpc_status_lbl.setAlignment(Qt.AlignRight)
+
+        continue_btn = QPushButton(self.lang_manager.get_string('save'), rpc_edit_window)
+        continue_btn.resize(110, 25)
+        continue_btn.move(15, 290)
+        continue_btn.setFont(QFont(self.btnFontFamily, 10))
+
+        update_btn = QPushButton(self.lang_manager.get_string('update'), rpc_edit_window)
+        update_btn.resize(110, 25)
+        update_btn.move(130, 290)
+        update_btn.setFont(QFont(self.btnFontFamily, 10))
+
+        disable_btn = QPushButton(rpc_edit_window)
+        disable_btn.resize(110, 25)
+        disable_btn.move(365, 290)
+        disable_btn.setFont(QFont(self.btnFontFamily, 10))
+
+        def on_clock_tick():
+            if self.core.rpc.is_connected:
+                clock.stop()
+                rpc_status_lbl.setText(self.lang_manager.get_string('rpc_status_connected'))
+                return
+
+            self._rpc_wait_ticks += 1
+            if self._rpc_wait_ticks >= 4:
+                self._rpc_wait_ticks = 1
+
+            rpc_status_lbl.setText(self.lang_manager.get_string('rpc_status_connecting') \
+                                   % ('.' * self._rpc_wait_ticks))
+
+        clock = QTimer()
+        clock.setTimerType(Qt.PreciseTimer)
+        clock.setInterval(200)
+        clock.timeout.connect(on_clock_tick)
+
+        self._rpc_wait_ticks = 0
+
+        def save_rpc_config():
+            self.core.config['rpc_client_id'] = client_id_edit.text().strip()
+            self.core.config['default_rpc']['state'] = state_edit.text().strip()
+            self.core.config['default_rpc']['details'] = details_edit.text().strip()
+            self.core.config['default_rpc']['start_timestamp'] = start_timestamp_edit.text().strip()
+            self.core.config['default_rpc']['end_timestamp'] = end_timestamp_edit.text().strip()
+            self.core.config['default_rpc']['large_image_key'] = large_image_key_edit.text().strip()
+            self.core.config['default_rpc']['large_image_text'] = large_image_text_edit.text().strip()
+            self.core.config['default_rpc']['small_image_key'] = small_image_key_edit.text().strip()
+            self.core.config['default_rpc']['small_image_text'] = small_image_text_edit.text().strip()
+            self.core.config_save()
+
+        def save_and_close():
+            client_id = client_id_edit.text().strip()
+            if client_id:
+                if not client_id_edit.text().strip().isdigit():
+                    logging.error("Application Client ID is not a digit.")
+                    error_window = QMessageBox()
+                    error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                    error_window.setWindowIcon(self.icon)
+                    error_window.setText(self.lang_manager.get_string("client_id_is_not_a_digit"))
+                    error_window.setIcon(QMessageBox.Warning)
+                    error_window.exec_()
+                    return
+
+            save_rpc_config()
+            rpc_edit_window.close()
+
+        def update_rpc():
+            if self.core.config['disable_rpc']:
+                logging.error('RPC cannot be updated. Discord RPC is disabled in config.')
+                error_window = QMessageBox()
+                error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                error_window.setWindowIcon(self.icon)
+                error_window.setText(self.lang_manager.get_string("rpc_disabled"))
+                error_window.setIcon(QMessageBox.Warning)
+                error_window.exec_()
+                return
+
+            client_id = client_id_edit.text().strip()
+            if client_id:
+                if not client_id_edit.text().strip().isdigit():
+                    logging.error("Application RPC Client ID is not a digit.")
+                    error_window = QMessageBox()
+                    error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                    error_window.setWindowIcon(self.icon)
+                    error_window.setText(self.lang_manager.get_string("client_id_is_not_a_digit"))
+                    error_window.setIcon(QMessageBox.Warning)
+                    error_window.exec_()
+                    return
+            else:
+                logging.error("Application RPC Client ID is empty.")
+                error_window = QMessageBox()
+                error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                error_window.setWindowIcon(self.icon)
+                error_window.setText(self.lang_manager.get_string("enter_the_client_id"))
+                error_window.setIcon(QMessageBox.Warning)
+                error_window.exec_()
+                return
+
+            old_client_id = self.core.config['rpc_client_id']
+            save_rpc_config()
+
+            if old_client_id != client_id:
+                if self.core.rpc:
+                    self.core.disconnect_rpc()
+                self.core.connect_rpc()
+
+            if self.core.rpc.is_connected:
+                try:
+                    self.core.rpc.update_rpc(self.core.config['default_rpc'])
+                except Exception as error:
+                    logging.error("Failed to update Discord RPC: %s", repr(error))
+                    error_window = QMessageBox()
+                    error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                    error_window.setWindowIcon(self.icon)
+                    error_window.setText(self.lang_manager.get_string("error_has_occurred") % repr(error))
+                    error_window.setIcon(QMessageBox.Warning)
+                    error_window.exec_()
+            else:
+                if not clock.isActive():
+                    self._rpc_wait_ticks = 0
+                    clock.start()
+
+        def switch_connection():
+            new_bool = not self.core.config['disable_rpc']
+            logging.info('Boolean of config key "disable_rpc" switched.')
+
+            if new_bool == True:
+                self.core.disconnect_rpc()
+                logging.info('Discord RPC disabled.')
+                rpc_status_lbl.setText(self.lang_manager.get_string('rpc_status_disabled'))
+                clock.stop()
+                disable_btn.setText(self.lang_manager.get_string('enable'))
+            else:
+                client_id = client_id_edit.text().strip()
+                if client_id:
+                    if not client_id_edit.text().strip().isdigit():
+                        logging.error("Application RPC Client ID is not a digit.")
+                        error_window = QMessageBox()
+                        error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                        error_window.setWindowIcon(self.icon)
+                        error_window.setText(self.lang_manager.get_string("client_id_is_not_a_digit"))
+                        error_window.setIcon(QMessageBox.Warning)
+                        error_window.exec_()
+                        return
+                else:
+                    logging.error("Application RPC Client ID is empty.")
+                    error_window = QMessageBox()
+                    error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                    error_window.setWindowIcon(self.icon)
+                    error_window.setText(self.lang_manager.get_string("enter_the_client_id"))
+                    error_window.setIcon(QMessageBox.Warning)
+                    error_window.exec_()
+                    return
+
+                self.core.connect_rpc()
+                logging.info('Discord RPC enabled.')
+                disable_btn.setText(self.lang_manager.get_string('disable'))
+                self._rpc_wait_ticks = 0
+                clock.start()
+
+            self.core.config['disable_rpc'] = new_bool
+            self.core.config_save()
+
+        state_edit.setText(str(self.core.config['default_rpc']['state']))
+        details_edit.setText(str(self.core.config['default_rpc']['details']))
+        start_timestamp_edit.setText(str(self.core.config['default_rpc']['start_timestamp']))
+        end_timestamp_edit.setText(str(self.core.config['default_rpc']['end_timestamp']))
+        large_image_key_edit.setText(str(self.core.config['default_rpc']['large_image_key']))
+        large_image_text_edit.setText(str(self.core.config['default_rpc']['large_image_text']))
+        small_image_key_edit.setText(str(self.core.config['default_rpc']['small_image_key']))
+        small_image_text_edit.setText(str(self.core.config['default_rpc']['small_image_text']))
+        client_id_edit.setText(str(self.core.config['rpc_client_id']))
+
+        if self.core.config['disable_rpc']:
+            disable_btn.setText(self.lang_manager.get_string('enable'))
+            rpc_status_lbl.setText(self.lang_manager.get_string('rpc_status_disabled'))
+        else:
+            disable_btn.setText(self.lang_manager.get_string('disable'))
+            if self.core.rpc.is_connected:
+                rpc_status_lbl.setText(self.lang_manager.get_string('rpc_status_connected'))
+            else:
+                clock.start()
+
+        continue_btn.clicked.connect(save_and_close)
+        update_btn.clicked.connect(update_rpc)
+        disable_btn.clicked.connect(switch_connection)
+
+        rpc_edit_window.setFocus()
+        rpc_edit_window.exec_()
+
     def about(self):
         about_window = QDialog()
         about_window.setWindowTitle(self.lang_manager.get_string("about"))
@@ -1097,6 +1410,14 @@ class App(QWidget):
 
     def closeEvent(self, event):
         self.tray_icon.hide()
+        if self.core.rpc:
+            try:
+                if self.core.rpc.loop.is_running():
+                    self.core.rpc.loop.stop()
+                else:
+                    self.core.rpc.close()
+            except Exception as error:
+                logging.error('Failed to close RPC: %s', repr(error))
 
 class custom_signal(QObject):
     """Custom PyQT signal class."""
@@ -1122,7 +1443,8 @@ def apply_style(app):
 
 def init_gui_application(launch_args):
     if os.path.exists('res'):
-        for filepath in ('res/lang.json', 'res/uni-sans.ttf', 'res/icon.ico'):
+        for filepath in ('res/lang.json', 'res/icon.ico', 'res/uni-sans.ttf',
+                         'res/whitney_bold.ttf', 'res/whitney_medium.ttf'):
             if not os.path.isfile(filepath):
                 logging.critical('Application resources not found: %s', filepath)
                 return 2

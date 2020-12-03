@@ -4,9 +4,12 @@ import random
 import time
 from datetime import datetime
 
-import requests
+import asyncio
 
-from PyQt5.QtCore import QThread
+import requests
+import pypresence
+
+from PyQt5.QtCore import QThread, QObject, pyqtSignal, pyqtSlot, QTimer, Qt
 
 from constants import API_URL
 
@@ -17,6 +20,12 @@ class Core(object):
         self.gui = gui
         self.config = {}
         self.statistics = {}
+        self.rpc = None
+
+        self.clock = QTimer()
+        self.clock.setTimerType(Qt.PreciseTimer)
+        self.clock.setInterval(100)
+        self.clock.timeout.connect(self.on_clock_tick)
 
     def config_load(self):
         """Loads the settings from a config file."""
@@ -66,6 +75,23 @@ class Core(object):
         if "tray_notifications" not in self.config:
             self.config["tray_notifications"] = True
 
+        if "rpc_client_id" not in self.config:
+            self.config["rpc_client_id"] = ""
+
+        if "disable_rpc" not in self.config:
+            self.config["disable_rpc"] = True
+
+        if 'default_rpc' not in self.config:
+            self.config['default_rpc'] = {}
+            self.config['default_rpc']['state'] = ''
+            self.config['default_rpc']['details'] = ''
+            self.config['default_rpc']['start_timestamp'] = ''
+            self.config['default_rpc']['end_timestamp'] = ''
+            self.config['default_rpc']['large_image_key'] = ''
+            self.config['default_rpc']['large_image_text'] = ''
+            self.config['default_rpc']['small_image_key'] = ''
+            self.config['default_rpc']['small_image_text'] = ''
+
         if "proxies" not in self.config:
             self.config["proxies"] = {"https": ""}
         elif not isinstance(self.config["proxies"], dict):
@@ -80,8 +106,50 @@ class Core(object):
         self.gui.frames_list_edit_filling()
         if self.config['randomize_frames']:
             self.gui.randomize_frames_checkbox.toggle()
+        if self.config['rpc_client_id'] and not self.config['disable_rpc']:
+            if self.rpc:
+                if self.rpc.client_id != str(self.config['rpc_client_id']):
+                    self.disconnect_rpc()
+                    self.connect_rpc()
+            else:
+                self.connect_rpc()
+
+        else:
+            if self.rpc:
+                self.disconnect_rpc()
+            self.rpc = None
 
         logging.info('Config applied.')
+
+    def connect_rpc(self):
+        self.rpc = RichPresenceCustom(self.config['rpc_client_id'])
+        self.rpc.thread = QThread()
+        self.rpc.thread.start()
+        self.rpc.thread.finished.connect(self.rpc.deleteLater)
+        self.rpc.moveToThread(self.rpc.thread)
+        self.rpc.start_connect.connect(self.rpc.run)
+        self.rpc.start_connect.emit()
+        self.clock.start()
+
+    def disconnect_rpc(self):
+        try:
+            if self.rpc.loop.is_running():
+                self.rpc.loop.stop()
+            else:
+                self.rpc.close()
+        except Exception as error:
+            logging.error('Failed to close RPC: %s', repr(error))
+        self.rpc.thread.terminate()
+
+    def on_clock_tick(self):
+        if self.rpc.is_connected:
+            logging.info('Discord RPC connected.')
+            self.clock.stop()
+            if not self.config['disable_rpc']:
+                try:
+                    self.rpc.update_rpc(self.config['default_rpc'])
+                except Exception as error:
+                    logging.error("Failed to update Discord RPC: %s", repr(error))
 
     def load_old_config(self):
         logging.info('Reading config.old file...')
@@ -273,3 +341,33 @@ class RequestsThread(QThread):
             self.core.save_statistics()
 
             time.sleep(self.core.config["delay"])
+
+class RichPresenceCustom(pypresence.Presence, QObject):
+
+    __slots__ = 'thread', 'is_connected',
+
+    start_connect = pyqtSignal()
+
+    def __init__(self, client_id):
+        QObject.__init__(self)
+        pypresence.Presence.__init__(self, client_id=client_id, loop=asyncio.new_event_loop())
+        self.thread = None
+        self.is_connected = False
+
+    @pyqtSlot()
+    def run(self):
+        logging.info('Discord RPC connecting...')
+        self.connect()
+        self.is_connected = True
+
+    def update_rpc(self, config):
+        self.update(
+            state=config['state'] if config['state'] else None,
+            details=config['details'] if config['details'] else None,
+            start=config['start_timestamp'] if config['start_timestamp'] else None,
+            end=config['end_timestamp'] if config['end_timestamp'] else None,
+            large_image=config['large_image_key'] if config['large_image_key'] else None,
+            large_text=config['large_image_text'] if config['large_image_text'] else None,
+            small_image=config['small_image_key'] if config['small_image_key'] else None,
+            small_text=config['small_image_text'] if config['small_image_text'] else None)
+        logging.info('Discord RPC updated.')
