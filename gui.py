@@ -17,6 +17,12 @@ from constants import ASCII_CHARS, AUTHORS_M, VERSION_M
 from core import Core, RequestsThread
 from lang import LanguageManager
 
+RESOURCES_DIR = {
+    'fonts': ['uni_sans_heavy.ttf', 'whitney_bold.ttf', 'whitney_medium.ttf'],
+    'images': ['about-bg.gif'],
+    'files': ['icon.ico', 'lang.json'],
+}
+
 PROXY_EXAMPLES = '''
 ip:port
 http://ip:port
@@ -108,10 +114,10 @@ class App(QWidget):
         # + PRESETS SECTION
 
         font_db = QFontDatabase()
-        uni_sans_id = font_db.addApplicationFont('res/uni-sans.ttf')
-        whitney_bold_id = font_db.addApplicationFont('res/whitney_bold.ttf')
-        whitney_medium_id = font_db.addApplicationFont('res/whitney_medium.ttf')
-        self.btnFontFamily = font_db.applicationFontFamilies(uni_sans_id)[0]
+        uni_sans_heavy_id = font_db.addApplicationFont('res/fonts/uni_sans_heavy.ttf')
+        whitney_bold_id = font_db.addApplicationFont('res/fonts/whitney_bold.ttf')
+        whitney_medium_id = font_db.addApplicationFont('res/fonts/whitney_medium.ttf')
+        self.btnFontFamily = font_db.applicationFontFamilies(uni_sans_heavy_id)[0]
         self.whitney_bold = font_db.applicationFontFamilies(whitney_bold_id)[0]
         self.whitney_medium = font_db.applicationFontFamilies(whitney_medium_id)[0]
 
@@ -1341,7 +1347,7 @@ class App(QWidget):
         txt_width = about_window_version_label.fontMetrics().boundingRect(about_window_version_label.text()).width()
         about_window_version_label.move(350/2-txt_width/2, 250/2+40)
 
-        about_window_bg = QMovie("res/about-bg.gif")
+        about_window_bg = QMovie("res/images/about-bg.gif")
         about_window_bg_label.setMovie(about_window_bg)
         about_window_bg.start()
 
@@ -1443,11 +1449,18 @@ def apply_style(app):
 
 def init_gui_application(launch_args):
     if os.path.exists('res'):
-        for filepath in ('res/lang.json', 'res/icon.ico', 'res/uni-sans.ttf',
-                         'res/whitney_bold.ttf', 'res/whitney_medium.ttf'):
-            if not os.path.isfile(filepath):
-                logging.critical('Application resources not found: %s', filepath)
-                return 2
+        for folder in RESOURCES_DIR:
+            if folder == 'files':
+                folder_name = ''
+            else:
+                folder_name = folder
+
+            for filename in RESOURCES_DIR[folder]:
+                filepath = os.path.join('res', folder_name, filename)
+
+                if not os.path.isfile(filepath):
+                    logging.critical('Application resources not found: %s', filepath)
+                    return 2
     else:
         logging.critical('Application resources not found: "res" folder')
         return 2
