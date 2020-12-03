@@ -298,6 +298,16 @@ class RequestsThread(QThread):
                                                      "expires_at": None}})
 
             try:
+                if not self.core.config['disable_rpc']:
+                    if self.core.rpc.is_connected:
+                        if ''.join(list(frame.get('rpc', {}).values())):
+                            try:
+                                self.core.rpc.update_rpc(frame.get('rpc'))
+                            except Exception as error:
+                                logging.error("Failed to update Discord RPC: %s", repr(error))
+                                self.gui.current_info = "RPC update failed:\n%s" % repr(error)
+                                self.gui.custom_signal.infoUpdated.emit()
+
                 req = requests.patch(API_URL + "/users/@me/settings",
                                      headers=self.auth("patch"), data=p_params,
                                      proxies=self.core.config.get('proxies'))

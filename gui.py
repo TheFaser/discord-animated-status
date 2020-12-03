@@ -612,6 +612,49 @@ class App(QWidget):
         add_btn.move(10, 71)
         add_btn.setFont(QFont(self.btnFontFamily, 10))
 
+        def set_rpc():
+            if self.core.config['disable_rpc']:
+                error_window = QMessageBox()
+                error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                error_window.setWindowIcon(self.icon)
+                error_window.setText(self.lang_manager.get_string("rpc_disabled_warning"))
+                error_window.setIcon(error_window.Warning)
+                error_window.exec_()
+
+            rpc_edit_window, state_edit, details_edit, start_timestamp_edit, end_timestamp_edit, large_image_key_edit, \
+            large_image_text_edit, small_image_key_edit, small_image_text_edit = self.get_discord_rpc_window(490, 260)
+
+            def save_rpc():
+                self._rpc_buffer['state'] = state_edit.text().strip()
+                self._rpc_buffer['details'] = details_edit.text().strip()
+                self._rpc_buffer['start_timestamp'] = start_timestamp_edit.text().strip()
+                self._rpc_buffer['end_timestamp'] = end_timestamp_edit.text().strip()
+                self._rpc_buffer['large_image_key'] = large_image_key_edit.text().strip()
+                self._rpc_buffer['large_image_text'] = large_image_text_edit.text().strip()
+                self._rpc_buffer['small_image_key'] = small_image_key_edit.text().strip()
+                self._rpc_buffer['small_image_text'] = small_image_text_edit.text().strip()
+
+                rpc_edit_window.close()
+
+            set_btn = QPushButton(self.lang_manager.get_string('set'), rpc_edit_window)
+            set_btn.resize(110, 25)
+            set_btn.move(15, 220)
+            set_btn.setFont(QFont(self.btnFontFamily, 10))
+
+            state_edit.setText(str(self._rpc_buffer['state']))
+            details_edit.setText(str(self._rpc_buffer['details']))
+            start_timestamp_edit.setText(str(self._rpc_buffer['start_timestamp']))
+            end_timestamp_edit.setText(str(self._rpc_buffer['end_timestamp']))
+            large_image_key_edit.setText(str(self._rpc_buffer['large_image_key']))
+            large_image_text_edit.setText(str(self._rpc_buffer['large_image_text']))
+            small_image_key_edit.setText(str(self._rpc_buffer['small_image_key']))
+            small_image_text_edit.setText(str(self._rpc_buffer['small_image_text']))
+
+            set_btn.clicked.connect(save_rpc)
+
+            rpc_edit_window.setFocus()
+            rpc_edit_window.exec_()
+
         def set_custom_emoji():
             custom_emoji_window = QDialog()
             custom_emoji_window.setWindowTitle(self.lang_manager.get_string("custom_emoji"))
@@ -681,10 +724,10 @@ class App(QWidget):
             text = text_edit.text().strip()
 
             if not text:
-                if self._emoji_buffer or self._custom_emoji_id_buffer:
+                if self._emoji_buffer or self._custom_emoji_id_buffer or ''.join(list(self._rpc_buffer.values())):
                     pass
                 else:
-                    logging.error("Failed to add new frame: Text field was empty.")
+                    logging.error("Failed to add new frame: Every field is empty.")
                     error_window = QMessageBox()
                     error_window.setWindowTitle(self.lang_manager.get_string("error"))
                     error_window.setWindowIcon(self.icon)
@@ -695,8 +738,9 @@ class App(QWidget):
                     return
 
             new_frame = {"str": text, "emoji": self._emoji_buffer}
-            if self._custom_emoji_id_buffer:
-                new_frame['custom_emoji_id'] = int(self._custom_emoji_id_buffer)
+            new_frame['custom_emoji_id'] = int(self._custom_emoji_id_buffer) if self._custom_emoji_id_buffer else ''
+            if ''.join(list(self._rpc_buffer.values())):
+                new_frame['rpc'] = self._rpc_buffer
 
             self.core.config["frames"].append(new_frame)
 
@@ -707,16 +751,28 @@ class App(QWidget):
 
         menu_bar = QMenuBar(frame_edit_window)
         menu_bar.setFont(self.font9)
-        menu_bar_emoji = menu_bar.addMenu(self.lang_manager.get_string("more"))
+        menu_bar_more = menu_bar.addMenu(self.lang_manager.get_string("more"))
         menu_bar_custom_emoji = QAction(self.lang_manager.get_string("custom_emoji"), frame_edit_window)
         menu_bar_custom_emoji.triggered.connect(set_custom_emoji)
-        menu_bar_emoji.addAction(menu_bar_custom_emoji)
+        menu_bar_rpc = QAction('RPC', frame_edit_window)
+        menu_bar_rpc.triggered.connect(set_rpc)
+        menu_bar_more.addAction(menu_bar_custom_emoji)
+        menu_bar_more.addAction(menu_bar_rpc)
 
         add_btn.clicked.connect(save_new_frame)
         emoji_edit.textEdited.connect(on_emoji_edit)
 
         self._emoji_buffer = ''
         self._custom_emoji_id_buffer = ''
+        self._rpc_buffer = {}
+        self._rpc_buffer['state'] = ''
+        self._rpc_buffer['details'] = ''
+        self._rpc_buffer['start_timestamp'] = ''
+        self._rpc_buffer['end_timestamp'] = ''
+        self._rpc_buffer['large_image_key'] = ''
+        self._rpc_buffer['large_image_text'] = ''
+        self._rpc_buffer['small_image_key'] = ''
+        self._rpc_buffer['small_image_text'] = ''
 
         frame_edit_window.setFocus()
         frame_edit_window.exec_()
@@ -741,10 +797,53 @@ class App(QWidget):
         text_edit.resize(140, 22)
         text_edit.move(40, 35)
 
-        add_btn = QPushButton(self.lang_manager.get_string("add"), frame_edit_window)
+        add_btn = QPushButton(self.lang_manager.get_string("save"), frame_edit_window)
         add_btn.resize(170, 25)
         add_btn.move(10, 71)
         add_btn.setFont(QFont(self.btnFontFamily, 10))
+
+        def set_rpc():
+            if self.core.config['disable_rpc']:
+                error_window = QMessageBox()
+                error_window.setWindowTitle(self.lang_manager.get_string("error"))
+                error_window.setWindowIcon(self.icon)
+                error_window.setText(self.lang_manager.get_string("rpc_disabled_warning"))
+                error_window.setIcon(error_window.Warning)
+                error_window.exec_()
+
+            rpc_edit_window, state_edit, details_edit, start_timestamp_edit, end_timestamp_edit, large_image_key_edit, \
+            large_image_text_edit, small_image_key_edit, small_image_text_edit = self.get_discord_rpc_window(490, 260)
+
+            def save_rpc():
+                self._rpc_buffer['state'] = state_edit.text().strip()
+                self._rpc_buffer['details'] = details_edit.text().strip()
+                self._rpc_buffer['start_timestamp'] = start_timestamp_edit.text().strip()
+                self._rpc_buffer['end_timestamp'] = end_timestamp_edit.text().strip()
+                self._rpc_buffer['large_image_key'] = large_image_key_edit.text().strip()
+                self._rpc_buffer['large_image_text'] = large_image_text_edit.text().strip()
+                self._rpc_buffer['small_image_key'] = small_image_key_edit.text().strip()
+                self._rpc_buffer['small_image_text'] = small_image_text_edit.text().strip()
+
+                rpc_edit_window.close()
+
+            set_btn = QPushButton(self.lang_manager.get_string('set'), rpc_edit_window)
+            set_btn.resize(110, 25)
+            set_btn.move(15, 220)
+            set_btn.setFont(QFont(self.btnFontFamily, 10))
+
+            state_edit.setText(str(self._rpc_buffer['state']))
+            details_edit.setText(str(self._rpc_buffer['details']))
+            start_timestamp_edit.setText(str(self._rpc_buffer['start_timestamp']))
+            end_timestamp_edit.setText(str(self._rpc_buffer['end_timestamp']))
+            large_image_key_edit.setText(str(self._rpc_buffer['large_image_key']))
+            large_image_text_edit.setText(str(self._rpc_buffer['large_image_text']))
+            small_image_key_edit.setText(str(self._rpc_buffer['small_image_key']))
+            small_image_text_edit.setText(str(self._rpc_buffer['small_image_text']))
+
+            set_btn.clicked.connect(save_rpc)
+
+            rpc_edit_window.setFocus()
+            rpc_edit_window.exec_()
 
         def set_custom_emoji():
             custom_emoji_window = QDialog()
@@ -815,10 +914,10 @@ class App(QWidget):
             text = text_edit.text().strip()
 
             if not text:
-                if self._emoji_buffer or self._custom_emoji_id_buffer:
+                if self._emoji_buffer or self._custom_emoji_id_buffer or ''.join(list(self._rpc_buffer.values())):
                     pass
                 else:
-                    logging.error("Failed to add new frame: Text field was empty.")
+                    logging.error("Failed to edit frame: Every field is empty.")
                     error_window = QMessageBox()
                     error_window.setWindowTitle(self.lang_manager.get_string("error"))
                     error_window.setWindowIcon(self.icon)
@@ -828,11 +927,12 @@ class App(QWidget):
                     text_edit.clear()
                     return
 
-            edited_frame = {"str": text, "emoji": self._emoji_buffer}
-            if self._custom_emoji_id_buffer:
-                edited_frame['custom_emoji_id'] = int(self._custom_emoji_id_buffer)
-
             selected_row = self.frames_list_edit.currentRow()
+
+            edited_frame = {"str": text, "emoji": self._emoji_buffer}
+            edited_frame['custom_emoji_id'] = int(self._custom_emoji_id_buffer) if self._custom_emoji_id_buffer else ''
+            if ''.join(list(self._rpc_buffer.values())):
+                edited_frame['rpc'] = self._rpc_buffer
 
             self.core.config["frames"][selected_row] = edited_frame
 
@@ -843,23 +943,39 @@ class App(QWidget):
 
         menu_bar = QMenuBar(frame_edit_window)
         menu_bar.setFont(self.font9)
-        menu_bar_emoji = menu_bar.addMenu(self.lang_manager.get_string("more"))
+        menu_bar_more = menu_bar.addMenu(self.lang_manager.get_string("more"))
         menu_bar_custom_emoji = QAction(self.lang_manager.get_string("custom_emoji"), frame_edit_window)
         menu_bar_custom_emoji.triggered.connect(set_custom_emoji)
-        menu_bar_emoji.addAction(menu_bar_custom_emoji)
+        menu_bar_rpc = QAction('RPC', frame_edit_window)
+        menu_bar_rpc.triggered.connect(set_rpc)
+        menu_bar_more.addAction(menu_bar_custom_emoji)
+        menu_bar_more.addAction(menu_bar_rpc)
 
         add_btn.clicked.connect(save_edited_frame)
         emoji_edit.textEdited.connect(on_emoji_edit)
 
-        self._emoji_buffer = self.core.config["frames"][self.frames_list_edit.currentRow()]["emoji"]
-        self._custom_emoji_id_buffer = str(self.core.config["frames"][self.frames_list_edit.currentRow()].get('custom_emoji_id', ''))
+        _selected_row_frame = self.core.config["frames"][self.frames_list_edit.currentRow()].copy()
+        self._emoji_buffer = _selected_row_frame["emoji"]
+        self._custom_emoji_id_buffer = str(_selected_row_frame.get('custom_emoji_id', ''))
+        if _selected_row_frame.get('rpc'):
+            self._rpc_buffer = _selected_row_frame['rpc']
+        else:
+            self._rpc_buffer = {}
+            self._rpc_buffer['state'] = ''
+            self._rpc_buffer['details'] = ''
+            self._rpc_buffer['start_timestamp'] = ''
+            self._rpc_buffer['end_timestamp'] = ''
+            self._rpc_buffer['large_image_key'] = ''
+            self._rpc_buffer['large_image_text'] = ''
+            self._rpc_buffer['small_image_key'] = ''
+            self._rpc_buffer['small_image_text'] = ''
 
         if self._custom_emoji_id_buffer:
             emoji_edit.setReadOnly(True)
             emoji_edit.setText('C')
         else:
             emoji_edit.setText(self._emoji_buffer)
-        text_edit.setText(self.core.config["frames"][self.frames_list_edit.currentRow()]["str"])
+        text_edit.setText(_selected_row_frame["str"])
 
         frame_edit_window.setFocus()
         frame_edit_window.exec_()
@@ -1031,90 +1147,8 @@ class App(QWidget):
         proxy_edit_window.exec_()
 
     def default_discord_rpc_edit(self):
-        rpc_edit_window = QDialog()
-        rpc_edit_window.setWindowTitle("Discord RPC")
-        rpc_edit_window.setWindowIcon(self.icon)
-        rpc_edit_window.setMinimumSize(QSize(490, 330))
-        rpc_edit_window.setMaximumSize(QSize(490, 330))
-        rpc_edit_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
-        rpc_edit_window.setStyleSheet("QToolTip {background-color: black; color: white; border: black solid 1px}")
-
-
-        lbl = QLabel('STATE', rpc_edit_window)
-        lbl.move(15, 15)
-        lbl.setFont(self.whitney_bold_9)
-
-        state_edit = QLineEdit(rpc_edit_window)
-        state_edit.resize(225, 22)
-        state_edit.move(15, 35)
-        state_edit.setFont(self.whitney_medium_10)
-
-        lbl = QLabel('DETAILS', rpc_edit_window)
-        lbl.move(250, 15)
-        lbl.setFont(self.whitney_bold_9)
-
-        details_edit = QLineEdit(rpc_edit_window)
-        details_edit.resize(225, 22)
-        details_edit.move(250, 35)
-        details_edit.setFont(self.whitney_medium_10)
-
-
-        lbl = QLabel('START TIMESTAMP', rpc_edit_window)
-        lbl.move(15, 65)
-        lbl.setFont(self.whitney_bold_9)
-
-        start_timestamp_edit = QLineEdit(rpc_edit_window)
-        start_timestamp_edit.resize(225, 22)
-        start_timestamp_edit.move(15, 85)
-        start_timestamp_edit.setFont(self.whitney_medium_10)
-
-        lbl = QLabel('END TIMESTAMP', rpc_edit_window)
-        lbl.move(250, 65)
-        lbl.setFont(self.whitney_bold_9)
-
-        end_timestamp_edit = QLineEdit(rpc_edit_window)
-        end_timestamp_edit.resize(225, 22)
-        end_timestamp_edit.move(250, 85)
-        end_timestamp_edit.setFont(self.whitney_medium_10)
-
-
-        lbl = QLabel('LARGE IMAGE KEY', rpc_edit_window)
-        lbl.move(15, 115)
-        lbl.setFont(self.whitney_bold_9)
-
-        large_image_key_edit = QLineEdit(rpc_edit_window)
-        large_image_key_edit.resize(225, 22)
-        large_image_key_edit.move(15, 135)
-        large_image_key_edit.setFont(self.whitney_medium_10)
-
-        lbl = QLabel('LARGE IMAGE TEXT', rpc_edit_window)
-        lbl.move(250, 115)
-        lbl.setFont(self.whitney_bold_9)
-
-        large_image_text_edit = QLineEdit(rpc_edit_window)
-        large_image_text_edit.resize(225, 22)
-        large_image_text_edit.move(250, 135)
-        large_image_text_edit.setFont(self.whitney_medium_10)
-
-
-        lbl = QLabel('SMALL IMAGE KEY', rpc_edit_window)
-        lbl.move(15, 165)
-        lbl.setFont(self.whitney_bold_9)
-
-        small_image_key_edit = QLineEdit(rpc_edit_window)
-        small_image_key_edit.resize(225, 22)
-        small_image_key_edit.move(15, 185)
-        small_image_key_edit.setFont(self.whitney_medium_10)
-
-        lbl = QLabel('SMALL IMAGE TEXT', rpc_edit_window)
-        lbl.move(250, 165)
-        lbl.setFont(self.whitney_bold_9)
-
-        small_image_text_edit = QLineEdit(rpc_edit_window)
-        small_image_text_edit.resize(225, 22)
-        small_image_text_edit.move(250, 185)
-        small_image_text_edit.setFont(self.whitney_medium_10)
-
+        rpc_edit_window, state_edit, details_edit, start_timestamp_edit, end_timestamp_edit, large_image_key_edit, \
+        large_image_text_edit, small_image_key_edit, small_image_text_edit = self.get_discord_rpc_window(490, 330)
 
         lbl = QLabel('CLIENT ID', rpc_edit_window)
         lbl.move(15, 225)
@@ -1124,7 +1158,6 @@ class App(QWidget):
         client_id_edit.resize(225, 22)
         client_id_edit.move(15, 245)
         client_id_edit.setFont(self.whitney_medium_10)
-
 
         rpc_status_lbl = QLabel(rpc_edit_window)
         rpc_status_lbl.resize(225, 22)
@@ -1352,6 +1385,90 @@ class App(QWidget):
         about_window_bg.start()
 
         about_window.exec_()
+
+    def get_discord_rpc_window(self, width, height):
+        rpc_edit_window = QDialog()
+        rpc_edit_window.setWindowTitle("Discord RPC")
+        rpc_edit_window.setWindowIcon(self.icon)
+        rpc_edit_window.setMinimumSize(QSize(width, height))
+        rpc_edit_window.setMaximumSize(QSize(width, height))
+        rpc_edit_window.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        rpc_edit_window.setStyleSheet("QToolTip {background-color: black; color: white; border: black solid 1px}")
+
+        lbl = QLabel('STATE', rpc_edit_window)
+        lbl.move(15, 15)
+        lbl.setFont(self.whitney_bold_9)
+
+        state_edit = QLineEdit(rpc_edit_window)
+        state_edit.resize(225, 22)
+        state_edit.move(15, 35)
+        state_edit.setFont(self.whitney_medium_10)
+
+        lbl = QLabel('DETAILS', rpc_edit_window)
+        lbl.move(250, 15)
+        lbl.setFont(self.whitney_bold_9)
+
+        details_edit = QLineEdit(rpc_edit_window)
+        details_edit.resize(225, 22)
+        details_edit.move(250, 35)
+        details_edit.setFont(self.whitney_medium_10)
+
+        lbl = QLabel('START TIMESTAMP', rpc_edit_window)
+        lbl.move(15, 65)
+        lbl.setFont(self.whitney_bold_9)
+
+        start_timestamp_edit = QLineEdit(rpc_edit_window)
+        start_timestamp_edit.resize(225, 22)
+        start_timestamp_edit.move(15, 85)
+        start_timestamp_edit.setFont(self.whitney_medium_10)
+
+        lbl = QLabel('END TIMESTAMP', rpc_edit_window)
+        lbl.move(250, 65)
+        lbl.setFont(self.whitney_bold_9)
+
+        end_timestamp_edit = QLineEdit(rpc_edit_window)
+        end_timestamp_edit.resize(225, 22)
+        end_timestamp_edit.move(250, 85)
+        end_timestamp_edit.setFont(self.whitney_medium_10)
+
+        lbl = QLabel('LARGE IMAGE KEY', rpc_edit_window)
+        lbl.move(15, 115)
+        lbl.setFont(self.whitney_bold_9)
+
+        large_image_key_edit = QLineEdit(rpc_edit_window)
+        large_image_key_edit.resize(225, 22)
+        large_image_key_edit.move(15, 135)
+        large_image_key_edit.setFont(self.whitney_medium_10)
+
+        lbl = QLabel('LARGE IMAGE TEXT', rpc_edit_window)
+        lbl.move(250, 115)
+        lbl.setFont(self.whitney_bold_9)
+
+        large_image_text_edit = QLineEdit(rpc_edit_window)
+        large_image_text_edit.resize(225, 22)
+        large_image_text_edit.move(250, 135)
+        large_image_text_edit.setFont(self.whitney_medium_10)
+
+        lbl = QLabel('SMALL IMAGE KEY', rpc_edit_window)
+        lbl.move(15, 165)
+        lbl.setFont(self.whitney_bold_9)
+
+        small_image_key_edit = QLineEdit(rpc_edit_window)
+        small_image_key_edit.resize(225, 22)
+        small_image_key_edit.move(15, 185)
+        small_image_key_edit.setFont(self.whitney_medium_10)
+
+        lbl = QLabel('SMALL IMAGE TEXT', rpc_edit_window)
+        lbl.move(250, 165)
+        lbl.setFont(self.whitney_bold_9)
+
+        small_image_text_edit = QLineEdit(rpc_edit_window)
+        small_image_text_edit.resize(225, 22)
+        small_image_text_edit.move(250, 185)
+        small_image_text_edit.setFont(self.whitney_medium_10)
+
+        return rpc_edit_window, state_edit, details_edit, start_timestamp_edit, end_timestamp_edit, \
+               large_image_key_edit, large_image_text_edit, small_image_key_edit, small_image_text_edit
 
     def reload_config(self):
         self.core.config_load()
