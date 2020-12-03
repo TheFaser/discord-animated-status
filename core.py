@@ -21,6 +21,7 @@ class Core(object):
         self.config = {}
         self.statistics = {}
         self.rpc = None
+        self.string_constants = {'#APP_LAUNCH#': int(time.time())}
 
         self.clock = QTimer()
         self.clock.setTimerType(Qt.PreciseTimer)
@@ -122,7 +123,7 @@ class Core(object):
         logging.info('Config applied.')
 
     def connect_rpc(self):
-        self.rpc = RichPresenceCustom(self.config['rpc_client_id'])
+        self.rpc = RichPresenceCustom(self.config['rpc_client_id'], self.string_constants)
         self.rpc.thread = QThread()
         self.rpc.thread.start()
         self.rpc.thread.finished.connect(self.rpc.deleteLater)
@@ -348,9 +349,10 @@ class RichPresenceCustom(pypresence.Presence, QObject):
 
     start_connect = pyqtSignal()
 
-    def __init__(self, client_id):
+    def __init__(self, client_id, string_constants):
         QObject.__init__(self)
         pypresence.Presence.__init__(self, client_id=client_id, loop=asyncio.new_event_loop())
+        self.string_constants = string_constants
         self.thread = None
         self.is_connected = False
 
@@ -361,6 +363,10 @@ class RichPresenceCustom(pypresence.Presence, QObject):
         self.is_connected = True
 
     def update_rpc(self, config):
+        config = config.copy()
+        config['start_timestamp'] = self._convert_variables(config['start_timestamp'])
+        config['end_timestamp'] = self._convert_variables(config['end_timestamp'])
+
         self.update(
             state=config['state'] if config['state'] else None,
             details=config['details'] if config['details'] else None,
@@ -370,4 +376,17 @@ class RichPresenceCustom(pypresence.Presence, QObject):
             large_text=config['large_image_text'] if config['large_image_text'] else None,
             small_image=config['small_image_key'] if config['small_image_key'] else None,
             small_text=config['small_image_text'] if config['small_image_text'] else None)
+
         logging.info('Discord RPC updated.')
+
+    def _convert_variables(self, string):
+        if not string:
+            return string
+
+        string_variables = self.string_constants.copy()
+        string_variables['#NOW#'] = int(time.time())
+
+        for variable in string_variables:
+            string = string.replace(variable, str(string_variables[variable]))
+
+        return eval(string)
