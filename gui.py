@@ -1448,22 +1448,18 @@ def apply_style(app):
     app.setPalette(palette)
 
 def init_gui_application(launch_args):
-    if os.path.exists('res'):
-        for folder in RESOURCES_DIR:
-            if folder == 'files':
-                folder_name = ''
-            else:
-                folder_name = folder
+    for folder in RESOURCES_DIR:
+        if folder == 'files':
+            folder_name = ''
+        else:
+            folder_name = folder
 
-            for filename in RESOURCES_DIR[folder]:
-                filepath = os.path.join('res', folder_name, filename)
+        for filename in RESOURCES_DIR[folder]:
+            filepath = os.path.join('res', folder_name, filename)
 
-                if not os.path.isfile(filepath):
-                    logging.critical('Application resources not found: %s', filepath)
-                    return 2
-    else:
-        logging.critical('Application resources not found: "res" folder')
-        return 2
+            if not os.path.isfile(filepath):
+                logging.critical('Application resources not found: %s', filepath)
+                return 2
 
     app = QApplication(sys.argv)
     apply_style(app)
