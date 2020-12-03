@@ -382,6 +382,8 @@ class RichPresenceCustom(pypresence.Presence, QObject):
     def _convert_variables(self, string):
         if not string:
             return string
+        if not isinstance(string, str):
+            return string
 
         string_variables = self.string_constants.copy()
         string_variables['#NOW#'] = int(time.time())
