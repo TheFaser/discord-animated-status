@@ -1537,9 +1537,10 @@ class App(QWidget):
         self.core.apply_config()
 
     def speed_change(self):
-        self.core.config["delay"] = self.speed_edit.value()
-        logging.info('Frame updating delay has been changed.')
-        self.core.config_save()
+        if self.speed_edit.value() != self.core.config["delay"]:
+            self.core.config["delay"] = self.speed_edit.value()
+            logging.info('Frame updating delay has been changed.')
+            self.core.config_save()
 
     def switch_frames_randomizing(self):
         self.core.config["randomize_frames"] = not self.core.config["randomize_frames"]
