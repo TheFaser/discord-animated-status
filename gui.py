@@ -100,6 +100,7 @@ class App(QWidget):
             later_btn.clicked.connect(lambda: execute_choice("later"))
 
             self.language_change_confirm_window.exec_()
+            self.language_change_confirm_window.deleteLater()
         
         return confirm_lang_change
 
@@ -370,23 +371,27 @@ class App(QWidget):
         if self.core.config["frames"] == []:
             logging.error("Failed to run animated status: Frame list is empty.")
             if not silent:
-                self.maximize_window()
+                if self.isHidden():
+                    self.maximize_window()
                 warning_window = QMessageBox()
                 warning_window.setWindowTitle(self.lang_manager.get_string("error"))
                 warning_window.setWindowIcon(self.icon)
                 warning_window.setText(self.lang_manager.get_string("frame_list_empty"))
                 warning_window.setIcon(warning_window.Warning)
                 warning_window.exec_()
+                warning_window.deleteLater()
         elif self.core.config["token"] == "":
             logging.error("Failed to run animated status: Token is empty.")
             if not silent:
-                self.maximize_window()
+                if self.isHidden():
+                    self.maximize_window()
                 warning_window = QMessageBox()
                 warning_window.setWindowTitle(self.lang_manager.get_string("error"))
                 warning_window.setWindowIcon(self.icon)
                 warning_window.setText(self.lang_manager.get_string("input_token"))
                 warning_window.setIcon(warning_window.Warning)
                 warning_window.exec_()
+                warning_window.deleteLater()
         else:
             for char in self.core.config["token"]:
                 if char not in ASCII_CHARS:
@@ -399,6 +404,7 @@ class App(QWidget):
                         warning_window.setText(self.lang_manager.get_string("token_invalid"))
                         warning_window.setIcon(warning_window.Warning)
                         warning_window.exec_()
+                        warning_window.deleteLater()
                     break
             else:
                 self.run_btn.setEnabled(False)
@@ -500,6 +506,7 @@ class App(QWidget):
             no.setText(self.lang_manager.get_string("cancel"))
 
             answer = warning_window.exec()
+            warning_window.deleteLater()
 
             if answer == QMessageBox.Yes:
                 self.frames_list_edit.clear()
@@ -567,6 +574,7 @@ class App(QWidget):
                 error_window.setText(self.lang_manager.get_string("enter_the_token"))
                 error_window.setIcon(error_window.Warning)
                 error_window.exec_()
+                error_window.deleteLater()
                 token_edit.clear()
                 return
 
@@ -608,6 +616,7 @@ class App(QWidget):
 
         token_edit_window.setFocus()
         token_edit_window.exec_()
+        token_edit_window.deleteLater()
 
     def add_frame(self):
         frame_edit_window = QDialog()
@@ -676,6 +685,7 @@ class App(QWidget):
 
             rpc_edit_window.setFocus()
             rpc_edit_window.exec_()
+            rpc_edit_window.deleteLater()
 
         def set_custom_emoji():
             custom_emoji_window = QDialog()
@@ -732,6 +742,7 @@ class App(QWidget):
 
             custom_emoji_window.setFocus()
             custom_emoji_window.exec_()
+            custom_emoji_window.deleteLater()
 
         def on_emoji_edit():
             try:
@@ -757,6 +768,7 @@ class App(QWidget):
                     error_window.setText(self.lang_manager.get_string("input_status"))
                     error_window.setIcon(error_window.Warning)
                     error_window.exec_()
+                    error_window.deleteLater()
                     text_edit.clear()
                     return
 
@@ -801,6 +813,7 @@ class App(QWidget):
 
         frame_edit_window.setFocus()
         frame_edit_window.exec_()
+        frame_edit_window.deleteLater()
 
     def edit_frame(self):
         frame_edit_window = QDialog()
@@ -925,6 +938,7 @@ class App(QWidget):
 
             custom_emoji_window.setFocus()
             custom_emoji_window.exec_()
+            custom_emoji_window.deleteLater()
 
         def on_emoji_edit():
             try:
@@ -1007,6 +1021,7 @@ class App(QWidget):
 
         frame_edit_window.setFocus()
         frame_edit_window.exec_()
+        frame_edit_window.deleteLater()
 
     def autostart_on_boot(self):
         if sys.platform not in ('win32',):
@@ -1063,6 +1078,7 @@ class App(QWidget):
                 success_window.setIcon(QMessageBox.NoIcon)
                 success_window.setText(self.lang_manager.get_string("autostart_enabled"))
                 success_window.exec_()
+                success_window.deleteLater()
 
             except Exception as error:
                 logging.error("Failed to enable autostart on system boot (%s): %s", sys.platform, repr(error))
@@ -1072,6 +1088,7 @@ class App(QWidget):
                 error_window.setText(self.lang_manager.get_string("error_has_occurred") % repr(error))
                 error_window.setIcon(QMessageBox.Warning)
                 error_window.exec_()
+                error_window.deleteLater()
 
         def disable_autostart():
             try:
@@ -1089,6 +1106,7 @@ class App(QWidget):
                 success_window.setIcon(QMessageBox.NoIcon)
                 success_window.setText(self.lang_manager.get_string("autostart_disabled"))
                 success_window.exec_()
+                success_window.deleteLater()
 
             except Exception as error:
                 logging.error("Failed to disable autostart on system boot (%s): %s", sys.platform, repr(error))
@@ -1098,12 +1116,14 @@ class App(QWidget):
                 error_window.setText(self.lang_manager.get_string("error_has_occurred") % repr(error))
                 error_window.setIcon(QMessageBox.Warning)
                 error_window.exec_()
+                error_window.deleteLater()
 
         enable_btn.clicked.connect(enable_autostart)
         disable_btn.clicked.connect(disable_autostart)
 
         autostart_on_boot_window.setFocus()
         autostart_on_boot_window.exec_()
+        autostart_on_boot_window.deleteLater()
 
     def edit_proxy(self):
         proxy_edit_window = QDialog()
@@ -1166,6 +1186,7 @@ class App(QWidget):
 
             info_window.setFocus()
             info_window.exec_()
+            info_window.deleteLater()
 
         text_edit.setText(self.core.config.get('proxies', {}).get('https', ''))
 
@@ -1174,6 +1195,7 @@ class App(QWidget):
 
         proxy_edit_window.setFocus()
         proxy_edit_window.exec_()
+        proxy_edit_window.deleteLater()
 
     def default_discord_rpc_edit(self):
         rpc_edit_window, state_edit, details_edit, start_timestamp_edit, end_timestamp_edit, large_image_key_edit, \
@@ -1253,6 +1275,7 @@ class App(QWidget):
                     error_window.setText(self.lang_manager.get_string("client_id_is_not_a_digit"))
                     error_window.setIcon(QMessageBox.Warning)
                     error_window.exec_()
+                    error_window.deleteLater()
                     return
 
             save_rpc_config()
@@ -1267,6 +1290,7 @@ class App(QWidget):
                 error_window.setText(self.lang_manager.get_string("rpc_disabled"))
                 error_window.setIcon(QMessageBox.Warning)
                 error_window.exec_()
+                error_window.deleteLater()
                 return
 
             client_id = client_id_edit.text().strip()
@@ -1279,6 +1303,7 @@ class App(QWidget):
                     error_window.setText(self.lang_manager.get_string("client_id_is_not_a_digit"))
                     error_window.setIcon(QMessageBox.Warning)
                     error_window.exec_()
+                    error_window.deleteLater()
                     return
             else:
                 logging.error("Application RPC Client ID is empty.")
@@ -1288,6 +1313,7 @@ class App(QWidget):
                 error_window.setText(self.lang_manager.get_string("enter_the_client_id"))
                 error_window.setIcon(QMessageBox.Warning)
                 error_window.exec_()
+                error_window.deleteLater()
                 return
 
             old_client_id = self.core.config['rpc_client_id']
@@ -1309,6 +1335,7 @@ class App(QWidget):
                     error_window.setText(self.lang_manager.get_string("error_has_occurred") % repr(error))
                     error_window.setIcon(QMessageBox.Warning)
                     error_window.exec_()
+                    error_window.deleteLater()
             else:
                 if not clock.isActive():
                     self._rpc_wait_ticks = 0
@@ -1335,6 +1362,7 @@ class App(QWidget):
                         error_window.setText(self.lang_manager.get_string("client_id_is_not_a_digit"))
                         error_window.setIcon(QMessageBox.Warning)
                         error_window.exec_()
+                        error_window.deleteLater()
                         return
                 else:
                     logging.error("Application RPC Client ID is empty.")
@@ -1344,6 +1372,7 @@ class App(QWidget):
                     error_window.setText(self.lang_manager.get_string("enter_the_client_id"))
                     error_window.setIcon(QMessageBox.Warning)
                     error_window.exec_()
+                    error_window.deleteLater()
                     return
 
                 self.core.connect_rpc()
@@ -1381,6 +1410,7 @@ class App(QWidget):
 
         rpc_edit_window.setFocus()
         rpc_edit_window.exec_()
+        rpc_edit_window.deleteLater()
 
     def about(self):
         about_window = QDialog()
@@ -1415,6 +1445,7 @@ class App(QWidget):
         about_window_bg.start()
 
         about_window.exec_()
+        about_window.deleteLater()
 
     def get_discord_rpc_window(self, width, height):
         rpc_edit_window = QDialog()
@@ -1542,6 +1573,7 @@ class App(QWidget):
             error_window.setText(self.lang_manager.get_string("auth_failed"))
             error_window.setIcon(error_window.Warning)
             error_window.exec_()
+            error_window.deleteLater()
         else:
             self.tray_icon.showMessage("Discord Animated Status",
                                        self.lang_manager.get_string("auth_failed"),
