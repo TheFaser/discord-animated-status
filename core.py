@@ -92,6 +92,8 @@ class Core(object):
             self.config['default_rpc']['large_image_text'] = ''
             self.config['default_rpc']['small_image_key'] = ''
             self.config['default_rpc']['small_image_text'] = ''
+        elif not isinstance(self.config['default_rpc'], dict):
+            logging.critical('Invalid config: default_rpc must be a dict')
 
         if "proxies" not in self.config:
             self.config["proxies"] = {"https": ""}

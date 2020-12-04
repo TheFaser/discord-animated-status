@@ -334,7 +334,7 @@ class App(QWidget):
         self.frames_clear_btn.clicked.connect(self.clear_frames_list)
         self.add_frame_btn.clicked.connect(self.add_frame)
         self.remove_frame_btn.clicked.connect(self.remove_frame)
-        self.speed_edit.valueChanged.connect(self.speed_change)
+        self.speed_edit.editingFinished.connect(self.speed_change)
         self.randomize_frames_checkbox.stateChanged.connect(self.switch_frames_randomizing)
 
         self.tray_icon.activated.connect(self.tray_click_checking)
@@ -354,8 +354,13 @@ class App(QWidget):
 
         if not launch_args.minimize:
             self.show()
+        else:
+            logging.info('Program window minimized by launch argument.')
+
         if launch_args.run_animation:
             self.run_animation(silent=True)
+
+        logging.info('GUI initialized.')
 
     def run_animation(self, silent=False):
         """Run animated status."""
@@ -417,6 +422,7 @@ class App(QWidget):
         logging.info("Stopped animated status.")
 
     def frames_list_edit_filling(self):
+        logging.info('Frames list filling...')
         self.frames_list_edit.clear()
         for frame_id, frame in enumerate(self.core.config["frames"].copy()):
             try:
@@ -431,6 +437,8 @@ class App(QWidget):
                 logging.error("Failed to add frame while filling: %s. The broken frame will be deleted.", repr(error))
                 del self.core.config["frames"][frame_id]
                 self.core.config_save()
+
+        logging.info('Frames list has been filled.')
 
     def moveUp_frame(self):
         try:
@@ -447,8 +455,11 @@ class App(QWidget):
             self.frames_list_edit.setCurrentRow(currentRow - 1)
 
             self.core.config_save()
-        except:
-            pass
+
+            logging.info('Frame #%s has been moved up.', currentRow)
+
+        except Exception as error:
+            logging.error('Failed to move up frame: %s', repr(error))
     
     def moveDown_frame(self):
         try:
@@ -465,8 +476,11 @@ class App(QWidget):
             self.frames_list_edit.setCurrentRow(currentRow + 1)
 
             self.core.config_save()
-        except:
-            pass
+
+            logging.info('Frame #%s has been moved down.', currentRow)
+
+        except Exception as error:
+            logging.error('Failed to move down frame: %s', repr(error))
 
     def clear_frames_list(self):
         """Clear all animated status frames."""
@@ -490,18 +504,22 @@ class App(QWidget):
                 self.core.config["frames"] = []
                 self.core.config_save()
 
+                logging.info('Frame list has been cleared.')
+
     def remove_frame(self):
         try:
             currentRow = self.frames_list_edit.currentRow()
             del self.core.config["frames"][currentRow]
 
             self.frames_list_edit_filling()
-
             self.core.config_save()
+
+            logging.info('Frame #%s has been removed.', currentRow)
 
             if len(self.core.config["frames"]) == currentRow:
                 currentRow -= 1
             self.frames_list_edit.setCurrentRow(currentRow)
+
         except Exception as error:
             logging.error("Failed to remove frame from frame list: %s", repr(error))
 
@@ -549,6 +567,8 @@ class App(QWidget):
                 error_window.exec_()
                 token_edit.clear()
                 return
+
+            logging.info('Token has been edited.')
 
             self.core.config["token"] = self._token_buffer
             self.core.config_save()
@@ -716,7 +736,8 @@ class App(QWidget):
                 e_buffer = emoji_edit.text()[:1].encode('utf-8').decode('utf-8')
                 self._emoji_buffer = e_buffer
                 emoji_edit.setText(e_buffer)
-            except (UnicodeEncodeError, UnicodeDecodeError, UnicodeTranslateError):
+            except (UnicodeEncodeError, UnicodeDecodeError, UnicodeTranslateError) as error:
+                logging.info('An error has occurred while emoji entering: %s', repr(error))
                 self._emoji_buffer = ''
                 emoji_edit.setText('')
 
@@ -743,6 +764,8 @@ class App(QWidget):
                 new_frame['rpc'] = self._rpc_buffer
 
             self.core.config["frames"].append(new_frame)
+
+            logging.info('New frame has been added.')
 
             self.core.config_save()
             self.frames_list_edit_filling()
@@ -906,7 +929,8 @@ class App(QWidget):
                 e_buffer = emoji_edit.text()[:1].encode('utf-8').decode('utf-8')
                 self._emoji_buffer = e_buffer
                 emoji_edit.setText(e_buffer)
-            except (UnicodeEncodeError, UnicodeDecodeError, UnicodeTranslateError):
+            except (UnicodeEncodeError, UnicodeDecodeError, UnicodeTranslateError) as error:
+                logging.info('An error has occurred while emoji entering: %s', repr(error))
                 self._emoji_buffer = ''
                 emoji_edit.setText('')
 
@@ -935,6 +959,8 @@ class App(QWidget):
                 edited_frame['rpc'] = self._rpc_buffer
 
             self.core.config["frames"][selected_row] = edited_frame
+
+            logging.info('Frame #%s has been edited.', selected_row)
 
             self.core.config_save()
             self.frames_list_edit_filling()
@@ -1107,6 +1133,7 @@ class App(QWidget):
                 self.core.config['proxies'] = {'https': ''}
 
             self.core.config['proxies']['https'] = proxy
+            logging.info('Proxy has been edited.')
             self.core.config_save()
 
             proxy_edit_window.close()
@@ -1210,6 +1237,7 @@ class App(QWidget):
             self.core.config['default_rpc']['large_image_text'] = large_image_text_edit.text().strip()
             self.core.config['default_rpc']['small_image_key'] = small_image_key_edit.text().strip()
             self.core.config['default_rpc']['small_image_text'] = small_image_text_edit.text().strip()
+            logging.info('Default RPC has been edited.')
             self.core.config_save()
 
         def save_and_close():
@@ -1471,15 +1499,18 @@ class App(QWidget):
                large_image_key_edit, large_image_text_edit, small_image_key_edit, small_image_text_edit
 
     def reload_config(self):
+        logging.info('Config reloading...')
         self.core.config_load()
         self.core.apply_config()
 
     def speed_change(self):
         self.core.config["delay"] = self.speed_edit.value()
+        logging.info('Frame updating delay has been changed.')
         self.core.config_save()
 
     def switch_frames_randomizing(self):
         self.core.config["randomize_frames"] = not self.core.config["randomize_frames"]
+        logging.info('Boolean of config key "randomize_frames" switched.')
         self.core.config_save()
 
     def update_frame_screen(self):
@@ -1517,10 +1548,12 @@ class App(QWidget):
     def changeEvent(self, event):
         if self.windowState() == Qt.WindowMinimized:
             self.hide()
+            logging.info('Program window has been minimized.')
 
     def tray_click_checking(self, reason):
         if reason == QSystemTrayIcon.Trigger:
             self.maximize_window()
+            logging.info('Program window has been maximized by tray icon click.')
 
     def maximize_window(self):
         self.show()
@@ -1578,6 +1611,7 @@ def init_gui_application(launch_args):
                 logging.critical('Application resources not found: %s', filepath)
                 return 2
 
+    logging.info('GUI initialization...')
     app = QApplication(sys.argv)
     apply_style(app)
     App(launch_args)
