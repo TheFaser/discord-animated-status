@@ -409,4 +409,10 @@ class RichPresenceCustom(pypresence.Presence, QObject):
         for variable in string_variables:
             string = string.replace(variable, str(string_variables[variable]))
 
-        return eval(string)
+        try:
+            string = eval(string)
+        except Exception as error:
+            logging.error('Failed to evaluate string expression: %s', repr(error))
+            string = ''
+
+        return string
