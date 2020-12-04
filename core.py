@@ -248,16 +248,20 @@ class RequestsThread(QThread):
 
     def parse_frame(self, frame):
         """Parse animated status frame."""
-        now = datetime.now()
         try:
-            mydata = requests.get(API_URL + "/users/@me", headers=self.auth("get"),
-                                  proxies=self.core.config.get('proxies')).json(encoding="utf-8")
-            frame["str"] = frame["str"].replace("#curtime#", datetime.strftime(now, "%H:%M"))
-            servcount = len(requests.get(API_URL + "/users/@me/guilds", headers=self.auth("get"),
-                                         proxies=self.core.config.get('proxies')).json(encoding="utf-8"))
-            frame["str"] = frame["str"].replace("#servcount#", str(servcount))
-            frame["str"] = frame["str"].replace("#name#", mydata["username"])
-            frame["str"] = frame["str"].replace("#id#", mydata["discriminator"])
+            frame["str"] = frame["str"].replace("#curtime#", datetime.strftime(datetime.now(), "%H:%M"))
+
+            if ('#name#' in frame["str"]) or ('#id#' in frame['str']):
+                mydata = requests.get(API_URL + "/users/@me", headers=self.auth("get"),
+                                      proxies=self.core.config.get('proxies')).json(encoding="utf-8")
+                frame["str"] = frame["str"].replace("#name#", mydata["username"])
+                frame["str"] = frame["str"].replace("#id#", mydata["discriminator"])
+
+            if '#servcount#' in frame['str']:
+                servcount = len(requests.get(API_URL + "/users/@me/guilds", headers=self.auth("get"),
+                                             proxies=self.core.config.get('proxies')).json(encoding="utf-8"))
+                frame["str"] = frame["str"].replace("#servcount#", str(servcount))
+
         except (KeyError, TypeError, requests.exceptions.RequestException) as e:
             frame = {"str": "Error", "emoji": ""}
             logging.error("Failed to parse frame: %s", repr(e))
