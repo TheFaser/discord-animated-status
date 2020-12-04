@@ -295,8 +295,8 @@ class RequestsThread(QThread):
                     break
 
             p_params = json.dumps({"custom_status": {"text": frame.get("str"),
-                                                     "emoji_id": frame.get('custom_emoji_id'),
-                                                     "emoji_name": frame.get('emoji'),
+                                                     "emoji_id": frame.get('custom_emoji_id') if frame.get('custom_emoji_id') else None,
+                                                     "emoji_name": frame.get('emoji') if frame.get('emoji') else None,
                                                      "expires_at": None}})
 
             try:
