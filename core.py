@@ -330,7 +330,7 @@ class RequestsThread(QThread):
                     self.gui.custom_signal.infoUpdated.emit()
                     if self.core.config["tray_notifications"]:
                         self.gui.tray_icon.showMessage("Discord Animated Status", self.gui.lang_manager.get_string("xrate_exceeded"), self.gui.icon, msecs=1000)
-                    time.sleep(30)
+                    self.sleep(30)
                 elif req.status_code == 401:
                     logging.error("Failed to authorize in Discord. Thread stopping...")
                     self.gui.custom_signal.authFailed.emit()
@@ -353,7 +353,7 @@ class RequestsThread(QThread):
             self.core.statistics['last_session_requests'] += 1
             self.core.save_statistics()
 
-            time.sleep(self.core.config["delay"])
+            self.sleep(self.core.config["delay"])
 
 class RichPresenceCustom(pypresence.Presence, QObject):
 
