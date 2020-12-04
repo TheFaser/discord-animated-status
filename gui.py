@@ -40,15 +40,14 @@ class App(QWidget):
 
     def __init__(self, launch_args):
         super().__init__()
-        self.lang_manager = LanguageManager()
         self.core = Core(self)
+        self.lang_manager = LanguageManager()
         self.requests_handler = RequestsThread(self.core, self)
         self.init_gui(launch_args)
 
     def restart(self):
         """Restarts the program."""
         logging.info("Forced restart. Restarting...")
-        self.core.config_save()
         self.tray_icon.hide()
         if self.core.rpc:
             try:
@@ -67,10 +66,13 @@ class App(QWidget):
             if choice == "restart":
                 self.lang_manager.selected_lang = lang
                 self.core.config["language"] = self.lang_manager.selected_lang
+                self.core.config_save()
+                logging.info('Selected language saved.')
                 self.restart()
             elif choice == "later":
                 self.core.config["language"] = lang
                 self.core.config_save()
+                logging.info('Selected language saved.')
                 self.language_change_confirm_window.close()
 
         def confirm_lang_change():

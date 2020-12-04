@@ -27,21 +27,6 @@ class LanguageManager(object):
             logging.warning("Selected lang not supported! Setting current language to EN.")
             self.selected_lang = "en"
 
-    def save_language(self):
-        """Save language data to a config file."""
-        try:
-            with open("config.json", "r+", encoding="utf-8") as cfg_file:
-                cfg = json.load(cfg_file)
-
-                cfg["language"] = self.selected_lang
-
-                cfg_file.seek(0)
-                json.dump(cfg, cfg_file, ensure_ascii=False, indent=4)
-                cfg_file.truncate()
-        except:
-            logging.error("Failed to save language data!")
-            return
-
     def init_text_data(self):
         """Initialize text data for language manager. Called once upon init."""
         with open("res/lang.json", "r+", encoding="utf-8") as lang_file:
