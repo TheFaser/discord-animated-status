@@ -318,12 +318,14 @@ class RequestsThread(QThread):
                                      headers=self.auth("patch"), data=p_params,
                                      proxies=self.core.config.get('proxies'))
                 if req.status_code == 200:
-                    if not frame["emoji"] and not frame.get('custom_emoji_id'):
-                        self.gui.current_frame = frame["str"]
-                    elif frame.get('custom_emoji_id'):
-                        self.gui.current_frame = "C | " + frame["str"]
-                    else:
-                        self.gui.current_frame = frame["emoji"] + " | " + frame["str"]
+                    item = frame.copy()
+                    if item.get('custom_emoji_id'):
+                        item['custom_emoji_id'] = 'C'
+                        item['emoji'] = ''
+                    if ''.join(list(item.get('rpc', {}).values())):
+                        item['rpc'] = 'RPC'
+
+                    self.gui.current_frame = ' | '.join([e for e in reversed(list(item.values())) if e])
                     self.gui.custom_signal.frameUpdated.emit()
                     if self.gui.current_info != "":
                         self.gui.current_info = ""

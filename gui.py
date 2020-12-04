@@ -434,17 +434,18 @@ class App(QWidget):
         self.frames_list_edit.clear()
         for frame_id, frame in enumerate(self.core.config["frames"].copy()):
             try:
+                frame = frame.copy()
                 if frame.get('custom_emoji_id'):
-                    new_item = "C | " + frame["str"]
-                elif frame["emoji"]:
-                    new_item = frame["emoji"] + " | " + frame["str"]
-                else:
-                    new_item = frame["str"]
+                    frame['custom_emoji_id'] = 'C'
+                    frame['emoji'] = ''
+                if ''.join(list(frame.get('rpc', {}).values())):
+                    frame['rpc'] = 'RPC'
+
+                new_item = ' | '.join([e for e in reversed(list(frame.values())) if e])
                 self.frames_list_edit.addItem(new_item)
+
             except Exception as error:
-                logging.error("Failed to add frame while filling: %s. The broken frame will be deleted.", repr(error))
-                del self.core.config["frames"][frame_id]
-                self.core.config_save()
+                logging.error("Failed to add frame #%s while filling: %s", frame_id, repr(error))
 
         logging.info('Frames list has been filled.')
 
