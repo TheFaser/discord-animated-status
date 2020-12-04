@@ -733,7 +733,7 @@ class App(QWidget):
                     self._custom_emoji_id_buffer = ''
                     emoji_edit.setReadOnly(False)
                     if emoji_edit.text() == 'C':
-                        emoji_edit.setText('')
+                        emoji_edit.setText(self._emoji_buffer)
 
                 custom_emoji_window.close()
 
@@ -929,7 +929,7 @@ class App(QWidget):
                     self._custom_emoji_id_buffer = ''
                     emoji_edit.setReadOnly(False)
                     if emoji_edit.text() == 'C':
-                        emoji_edit.setText('')
+                        emoji_edit.setText(self._emoji_buffer)
 
                 custom_emoji_window.close()
 
