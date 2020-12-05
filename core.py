@@ -120,16 +120,15 @@ class Core(object):
         else:
             if self.rpc:
                 self.disconnect_rpc()
-            self.rpc = None
 
         logging.info('Config applied.')
 
     def connect_rpc(self):
         self.rpc = RichPresenceCustom(self.config['rpc_client_id'], self.string_constants)
-        self.rpc.thread = QThread()
-        self.rpc.thread.start()
-        self.rpc.thread.finished.connect(self.rpc.deleteLater)
-        self.rpc.moveToThread(self.rpc.thread)
+        self.rpc._thread = QThread()
+        self.rpc._thread.start()
+        self.rpc._thread.finished.connect(self.rpc._thread.deleteLater)
+        self.rpc.moveToThread(self.rpc._thread)
         self.rpc.start_connect.connect(self.rpc.run)
         self.rpc.start_connect.emit()
         self.clock.start()
@@ -139,12 +138,20 @@ class Core(object):
             if self.rpc.loop.is_running():
                 self.rpc.loop.stop()
             else:
-                self.rpc.close()
+                if not self.rpc.error:
+                    self.rpc.close()
+                else:
+                    self.rpc.loop.stop()
         except Exception as error:
             logging.error('Failed to close RPC: %s', repr(error))
-        self.rpc.thread.terminate()
+        self.rpc._thread.quit()
 
     def on_clock_tick(self):
+        if self.rpc.error:
+            if self.rpc.error.is_critical:
+                self.clock.stop()
+                return
+
         if self.rpc.is_connected:
             logging.info('Discord RPC connected.')
             self.clock.stop()
@@ -363,22 +370,35 @@ class RequestsThread(QThread):
 
 class RichPresenceCustom(pypresence.Presence, QObject):
 
-    __slots__ = 'thread', 'is_connected',
+    __slots__ = '_thread', 'is_connected', 'error', 'string_constants',
 
     start_connect = pyqtSignal()
 
     def __init__(self, client_id, string_constants):
         QObject.__init__(self)
         pypresence.Presence.__init__(self, client_id=client_id, loop=asyncio.new_event_loop())
-        self.string_constants = string_constants
-        self.thread = None
+        self._thread = None
         self.is_connected = False
+        self.error = None
+        self.string_constants = string_constants
 
     @pyqtSlot()
     def run(self):
         logging.info('Discord RPC connecting...')
-        self.connect()
-        self.is_connected = True
+        try:
+            self.connect()
+            self.is_connected = True
+            self.error = None
+
+        except Exception as error:
+            logging.error('Failed to connect RPC: %s', repr(error))
+            if self.error:
+                self.error = RichPresenceConnectError(error, is_critical=True)
+            else:
+                self.error = RichPresenceConnectError(error)
+                logging.info('20 seconds pause to try connect RPC...')
+                self._thread.sleep(20)
+                return self.run()
 
     def update_rpc(self, config):
         config = config.copy()
@@ -416,3 +436,18 @@ class RichPresenceCustom(pypresence.Presence, QObject):
             string = ''
 
         return string
+
+class RichPresenceConnectError(Exception):
+
+    def __init__(self, base_exception, is_critical=False):
+        self.base_exception = base_exception
+        self.is_critical = is_critical
+
+        if isinstance(self.base_exception, pypresence.InvalidPipe):
+            self.message = 'Running discord app not found'
+            self.lang_string = 'discord_not_found'
+        else:
+            self.message = 'An error has occured'
+            self.lang_string = 'rpc_error_see_log'
+
+        super().__init__(self.message)

@@ -1212,7 +1212,7 @@ class App(QWidget):
         client_id_edit.setFont(self.whitney_medium_10)
 
         rpc_status_lbl = QLabel(rpc_edit_window)
-        rpc_status_lbl.resize(225, 22)
+        rpc_status_lbl.resize(225, 40)
         rpc_status_lbl.move(250, 245)
         rpc_status_lbl.setFont(self.whitney_bold_9)
         rpc_status_lbl.setAlignment(Qt.AlignRight)
@@ -1238,19 +1238,29 @@ class App(QWidget):
                 rpc_status_lbl.setText(self.lang_manager.get_string('rpc_status_connected'))
                 return
 
-            self._rpc_wait_ticks += 1
-            if self._rpc_wait_ticks >= 4:
-                self._rpc_wait_ticks = 1
+            self._rpc_wait_ticks_buffer += 1
+            if self._rpc_wait_ticks_buffer >= 4:
+                self._rpc_wait_ticks_buffer = 1
 
-            rpc_status_lbl.setText(self.lang_manager.get_string('rpc_status_connecting') \
-                                   % ('.' * self._rpc_wait_ticks))
+            status_string = self.lang_manager.get_string('rpc_status_connecting') \
+                                                         % ('.' * self._rpc_wait_ticks_buffer)
+            if self.core.rpc.error:
+                if self.core.rpc.error.is_critical:
+                    clock.stop()
+                    status_string = self.lang_manager.get_string('rpc_status_failed') \
+                                    % self.lang_manager.get_string(self.core.rpc.error.lang_string)
+                else:
+                    status_string += self.lang_manager.get_string('rpc_error_has_occurred') \
+                                     % self.lang_manager.get_string(self.core.rpc.error.lang_string)
+
+            rpc_status_lbl.setText(status_string)
 
         clock = QTimer()
         clock.setTimerType(Qt.PreciseTimer)
         clock.setInterval(200)
         clock.timeout.connect(on_clock_tick)
 
-        self._rpc_wait_ticks = 0
+        self._rpc_wait_ticks_buffer = 0
 
         def save_rpc_config():
             self.core.config['rpc_client_id'] = client_id_edit.text().strip()
@@ -1339,19 +1349,21 @@ class App(QWidget):
                     error_window.deleteLater()
             else:
                 if not clock.isActive():
-                    self._rpc_wait_ticks = 0
+                    self._rpc_wait_ticks_buffer = 0
                     clock.start()
 
         def switch_connection():
             new_bool = not self.core.config['disable_rpc']
             logging.info('Boolean of config key "disable_rpc" switched.')
 
-            if new_bool == True:
-                self.core.disconnect_rpc()
+            if new_bool:
+                if self.core.rpc:
+                    self.core.disconnect_rpc()
                 logging.info('Discord RPC disabled.')
                 rpc_status_lbl.setText(self.lang_manager.get_string('rpc_status_disabled'))
                 clock.stop()
                 disable_btn.setText(self.lang_manager.get_string('enable'))
+
             else:
                 client_id = client_id_edit.text().strip()
                 if client_id:
@@ -1376,10 +1388,12 @@ class App(QWidget):
                     error_window.deleteLater()
                     return
 
+                self.core.config['rpc_client_id'] = client_id
+
                 self.core.connect_rpc()
                 logging.info('Discord RPC enabled.')
                 disable_btn.setText(self.lang_manager.get_string('disable'))
-                self._rpc_wait_ticks = 0
+                self._rpc_wait_ticks_buffer = 0
                 clock.start()
 
             self.core.config['disable_rpc'] = new_bool
@@ -1395,15 +1409,16 @@ class App(QWidget):
         small_image_text_edit.setText(str(self.core.config['default_rpc']['small_image_text']))
         client_id_edit.setText(str(self.core.config['rpc_client_id']))
 
-        if self.core.config['disable_rpc']:
+        if not self.core.config['disable_rpc'] and self.core.config['rpc_client_id']:
+            disable_btn.setText(self.lang_manager.get_string('disable'))
+            if self.core.rpc:
+                if self.core.rpc.is_connected:
+                    rpc_status_lbl.setText(self.lang_manager.get_string('rpc_status_connected'))
+                else:
+                    clock.start()
+        else:
             disable_btn.setText(self.lang_manager.get_string('enable'))
             rpc_status_lbl.setText(self.lang_manager.get_string('rpc_status_disabled'))
-        else:
-            disable_btn.setText(self.lang_manager.get_string('disable'))
-            if self.core.rpc.is_connected:
-                rpc_status_lbl.setText(self.lang_manager.get_string('rpc_status_connected'))
-            else:
-                clock.start()
 
         continue_btn.clicked.connect(save_and_close)
         update_btn.clicked.connect(update_rpc)
@@ -1411,6 +1426,7 @@ class App(QWidget):
 
         rpc_edit_window.setFocus()
         rpc_edit_window.exec_()
+        clock.stop()
         rpc_edit_window.deleteLater()
 
     def about(self):
@@ -1602,14 +1618,19 @@ class App(QWidget):
 
     def closeEvent(self, event):
         self.tray_icon.hide()
-        if self.core.rpc:
-            try:
-                if self.core.rpc.loop.is_running():
-                    self.core.rpc.loop.stop()
-                else:
-                    self.core.rpc.close()
-            except Exception as error:
-                logging.error('Failed to close RPC: %s', repr(error))
+        if self.core.config['rpc_client_id'] and not self.core.config['disable_rpc']:
+            if self.core.rpc:
+                try:
+                    if self.core.rpc.loop.is_running():
+                        self.core.rpc.loop.stop()
+                    else:
+                        if not self.core.rpc.error:
+                            self.core.rpc.close()
+                        else:
+                            self.core.rpc.loop.stop()
+                except Exception as error:
+                    logging.error('Failed to close RPC: %s', repr(error))
+                self.core.rpc._thread.quit()
 
 class custom_signal(QObject):
     """Custom PyQT signal class."""
