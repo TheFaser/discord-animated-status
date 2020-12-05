@@ -11,7 +11,7 @@ def entry():
     if not os.path.exists('logs'):
         os.makedirs('logs')
 
-    log_formatter_string = '%(asctime)s | %(levelname)s |%(filename)s:%(lineno)d| %(message)s'
+    log_formatter_string = '%(asctime)s.%(msecs)03d | %(levelname)s |%(filename)s:%(lineno)d| %(message)s'
     log_formatter = logging.Formatter(log_formatter_string, datefmt='%Y-%m-%d-%H:%M:%S')
     log_filename = datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + '.log'
 
@@ -27,17 +27,19 @@ def entry():
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument('-m', '--minimize', action='store_true', help='minimize app to tray on launch')
     args_parser.add_argument('-r', '--run-animation', action='store_true', help='run status animation on launch')
+
     try:
         launch_args = args_parser.parse_args()
         logging.info('Launch arguments: %s', launch_args.__dict__)
+
+        exit_code = init_gui_application(launch_args)
+
     except SystemExit as error:
         logging.critical('SystemExit caught. Failed to parse launch arguments.')
-        exit_code = 160
-
-    try:
-        exit_code = init_gui_application(launch_args)
+        exit_code = 1
     except Exception as error:
-        logging.critical('Failed to init GUI: %s', repr(error))
+        logging.critical('An error has occurred while executing GUI: %s', repr(error))
+        exit_code = 3
 
     logging.info("Program exit with code %s.", exit_code)
     if exit_code != 0:
