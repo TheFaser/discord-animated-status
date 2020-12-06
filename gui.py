@@ -1499,6 +1499,7 @@ class App(QWidget):
         start_timestamp_edit.resize(225, 22)
         start_timestamp_edit.move(15, 85)
         start_timestamp_edit.setFont(self.whitney_medium_10)
+        start_timestamp_edit.setToolTip(self.lang_manager.get_string('rpc_timestamp_tooltip'))
 
         lbl = QLabel('END TIMESTAMP', rpc_edit_window)
         lbl.move(250, 65)
@@ -1508,6 +1509,7 @@ class App(QWidget):
         end_timestamp_edit.resize(225, 22)
         end_timestamp_edit.move(250, 85)
         end_timestamp_edit.setFont(self.whitney_medium_10)
+        end_timestamp_edit.setToolTip(self.lang_manager.get_string('rpc_timestamp_tooltip'))
 
         lbl = QLabel('LARGE IMAGE KEY', rpc_edit_window)
         lbl.move(15, 115)
