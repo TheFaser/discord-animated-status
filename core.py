@@ -146,8 +146,8 @@ class Core(object):
         except Exception as error:
             logging.error('Failed to close RPC: %s', repr(error))
 
-        self.rpc.deleteLater()
         self.rpc_thread.quit()
+        self.rpc.deleteLater()
 
     def on_clock_tick(self):
         if self.rpc.error:
