@@ -1622,17 +1622,7 @@ class App(QWidget):
         self.tray_icon.hide()
         if self.core.config['rpc_client_id'] and not self.core.config['disable_rpc']:
             if self.core.rpc:
-                try:
-                    if self.core.rpc.loop.is_running():
-                        self.core.rpc.loop.stop()
-                    else:
-                        if not self.core.rpc.error:
-                            self.core.rpc.close()
-                        else:
-                            self.core.rpc.loop.stop()
-                except Exception as error:
-                    logging.error('Failed to close RPC: %s', repr(error))
-                self.core.rpc._thread.quit()
+                self.core.disconnect_rpc()
 
 class custom_signal(QObject):
     """Custom PyQT signal class."""

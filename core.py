@@ -20,13 +20,16 @@ class Core(object):
         self.gui = gui
         self.config = {}
         self.statistics = {}
+
         self.rpc = None
-        self.string_constants = {'#APP_LAUNCH#': int(time.time())}
+        self.rpc_thread = QThread()
 
         self.clock = QTimer()
         self.clock.setTimerType(Qt.PreciseTimer)
         self.clock.setInterval(100)
         self.clock.timeout.connect(self.on_clock_tick)
+
+        self.string_constants = {'#APP_LAUNCH#': int(time.time())}
 
     def config_load(self):
         """Loads the settings from a config file."""
@@ -125,10 +128,8 @@ class Core(object):
 
     def connect_rpc(self):
         self.rpc = RichPresenceCustom(self.config['rpc_client_id'], self.string_constants)
-        self.rpc._thread = QThread()
-        self.rpc._thread.start()
-        self.rpc._thread.finished.connect(self.rpc._thread.deleteLater)
-        self.rpc.moveToThread(self.rpc._thread)
+        self.rpc_thread.start()
+        self.rpc.moveToThread(self.rpc_thread)
         self.rpc.start_connect.connect(self.rpc.run)
         self.rpc.start_connect.emit()
         self.clock.start()
@@ -138,13 +139,15 @@ class Core(object):
             if self.rpc.loop.is_running():
                 self.rpc.loop.stop()
             else:
-                if not self.rpc.error:
+                try:
                     self.rpc.close()
-                else:
+                except AttributeError:
                     self.rpc.loop.stop()
         except Exception as error:
             logging.error('Failed to close RPC: %s', repr(error))
-        self.rpc._thread.quit()
+
+        self.rpc.deleteLater()
+        self.rpc_thread.quit()
 
     def on_clock_tick(self):
         if self.rpc.error:
@@ -370,14 +373,13 @@ class RequestsThread(QThread):
 
 class RichPresenceCustom(pypresence.Presence, QObject):
 
-    __slots__ = '_thread', 'is_connected', 'error', 'string_constants',
+    __slots__ = 'is_connected', 'error', 'string_constants',
 
     start_connect = pyqtSignal()
 
     def __init__(self, client_id, string_constants):
         QObject.__init__(self)
         pypresence.Presence.__init__(self, client_id=client_id, loop=asyncio.new_event_loop())
-        self._thread = None
         self.is_connected = False
         self.error = None
         self.string_constants = string_constants
@@ -397,7 +399,7 @@ class RichPresenceCustom(pypresence.Presence, QObject):
             else:
                 self.error = RichPresenceConnectError(error)
                 logging.info('20 seconds pause to try connect RPC...')
-                self._thread.sleep(20)
+                self.thread().sleep(20)
                 return self.run()
 
     def update_rpc(self, config):
