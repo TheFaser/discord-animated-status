@@ -1,13 +1,15 @@
-![Python 3.8](https://img.shields.io/badge/python-3.8-brightgreen) ![Gui PyQT](https://img.shields.io/badge/gui-pyqt-blue) ![Version](https://img.shields.io/badge/version-2.0.1-green)
+![Python 3.8](https://img.shields.io/badge/python-3.8-brightgreen) ![Gui PyQt5](https://img.shields.io/badge/gui-pyqt5-blue) ![Stable-Version](https://img.shields.io/badge/stable--version-2.1.0-green)
 
 # Information
 External libraries used:
-* PyQT
-* Requests  
+* PyQt5
+* requests
+* pypresence
  
-Will not work with bot tokens since the core edits your profile's settings (basically repeating the `settings` request with special parameters for status editing).  
-  
+Will not work with bot tokens since the core edits your profile's settings (basically repeating the `settings` request with special parameters for status editing).
 You'll need to get your own user authorization token in order for it to work.
+
+For Discord PRC animation needs client id of your application from [Developer Portal Applications](https://discord.com/developers/applications/)
 
 # Getting your user authorization token
 [This video](https://youtu.be/tI1lzqzLQCs) (also see the author's comment under the video)
