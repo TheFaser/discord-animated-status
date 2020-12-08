@@ -2,9 +2,9 @@ import json
 import logging
 import random
 import time
-from datetime import datetime
-
+import re
 import asyncio
+from datetime import datetime
 
 import requests
 import pypresence
@@ -260,17 +260,21 @@ class RequestsThread(QThread):
         """Parse animated status frame."""
         try:
             frame["str"] = frame["str"].replace("#curtime#", datetime.strftime(datetime.now(), "%H:%M"))
+            frame["str"] = frame["str"].replace("#timenow#", datetime.strftime(datetime.now(), "%H:%M"))
 
-            if ('#name#' in frame["str"]) or ('#id#' in frame['str']):
-                mydata = requests.get(API_URL + "/users/@me", headers=self.auth("get"),
-                                      proxies=self.core.config.get('proxies')).json(encoding="utf-8")
-                frame["str"] = frame["str"].replace("#name#", mydata["username"])
-                frame["str"] = frame["str"].replace("#id#", mydata["discriminator"])
+            if re.search('(#name#|#nick#|#id#|#discriminator#)', frame['str']):
+                userdata = requests.get(API_URL + "/users/@me", headers=self.auth("get"),
+                                        proxies=self.core.config.get('proxies')).json(encoding="utf-8")
+                frame["str"] = frame["str"].replace("#name#", userdata["username"])
+                frame["str"] = frame["str"].replace("#nick#", userdata["username"])
+                frame["str"] = frame["str"].replace("#id#", userdata["id"])
+                frame["str"] = frame["str"].replace("#discriminator#", userdata["discriminator"])
 
-            if '#servcount#' in frame['str']:
-                servcount = len(requests.get(API_URL + "/users/@me/guilds", headers=self.auth("get"),
+            if re.search('(#servcount#|#guildcount#)', frame['str']):
+                guildcount = len(requests.get(API_URL + "/users/@me/guilds", headers=self.auth("get"),
                                              proxies=self.core.config.get('proxies')).json(encoding="utf-8"))
-                frame["str"] = frame["str"].replace("#servcount#", str(servcount))
+                frame["str"] = frame["str"].replace("#servcount#", str(guildcount))
+                frame["str"] = frame["str"].replace("#guildcount#", str(guildcount))
 
         except (KeyError, TypeError, requests.exceptions.RequestException) as e:
             frame = {"str": "Error", "emoji": ""}
@@ -302,11 +306,7 @@ class RequestsThread(QThread):
                     i = 0
                 frame = self.core.config["frames"][i].copy()
 
-            # useless requests are disabled if string variables not found in frame
-            for var in ('#curtime#', '#servcount#', '#name#', '#id#'):
-                if var in frame['str']:
-                    self.parse_frame(frame)
-                    break
+            self.parse_frame(frame) # string variables parsing
 
             p_params = json.dumps({"custom_status": {"text": frame.get("str"),
                                                      "emoji_id": frame.get('custom_emoji_id') if frame.get('custom_emoji_id') else None,
