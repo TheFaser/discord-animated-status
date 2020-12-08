@@ -21,6 +21,9 @@ class Core(object):
         self.config = {}
         self.statistics = {}
 
+        self.requests_thread = RequestsThread(self, self.gui)
+        self.requests_thread.finished.connect(self.gui.on_requests_thread_stop)
+
         self.rpc = None
         self.rpc_thread = QThread()
 

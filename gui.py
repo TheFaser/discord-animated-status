@@ -14,7 +14,7 @@ else:
 
 from constants import ASCII_CHARS, AUTHORS_M, VERSION_M
 
-from core import Core, RequestsThread
+from core import Core
 from lang import LanguageManager
 
 RESOURCES_DIR = {
@@ -46,7 +46,6 @@ class App(QWidget):
         super().__init__()
         self.core = Core(self)
         self.lang_manager = LanguageManager()
-        self.requests_handler = RequestsThread(self.core, self)
         self.init_gui(launch_args)
 
     def restart(self):
@@ -354,8 +353,6 @@ class App(QWidget):
         self.infoUpdated.connect(self.update_info_screen)
         self.authFailed.connect(self.on_auth_failed)
 
-        self.requests_handler.finished.connect(self.on_requests_thread_stop)
-
         self.core.apply_config()
 
         if not launch_args.minimize:
@@ -417,7 +414,7 @@ class App(QWidget):
                 self.run_stop_animated_status.setText(self.lang_manager.get_string("stop"))
                 self.run_stop_animated_status.triggered.connect(self.stop_animation)
 
-                self.requests_handler.start()
+                self.core.requests_thread.start()
 
                 logging.info("Started animated status.")
 
@@ -428,7 +425,7 @@ class App(QWidget):
         self.run_stop_animated_status.setEnabled(False)
         self.info_screen.setText(self.lang_manager.get_string("stopping"))
 
-        self.requests_handler.terminate()
+        self.core.requests_thread.terminate()
 
         logging.info("Stopped animated status.")
 
