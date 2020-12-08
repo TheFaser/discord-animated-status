@@ -113,7 +113,7 @@ class Core(object):
         if self.config['randomize_frames']:
             self.gui.randomize_frames_checkbox.toggle()
         if self.config['rpc_client_id'] and not self.config['disable_rpc']:
-            if self.rpc:
+            if (not self.rpc_thread.isFinished()) and (self.rpc):
                 if self.rpc.client_id != str(self.config['rpc_client_id']):
                     self.disconnect_rpc()
                     self.connect_rpc()
@@ -121,7 +121,7 @@ class Core(object):
                 self.connect_rpc()
 
         else:
-            if self.rpc:
+            if (not self.rpc_thread.isFinished()) and (self.rpc):
                 self.disconnect_rpc()
 
         logging.info('Config applied.')
