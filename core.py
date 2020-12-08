@@ -203,7 +203,7 @@ class Core(object):
                     logging.error("Failed to save old config: %s", repr(error))
                     if gui_emit:
                         self.gui.current_info = self.gui.lang_manager.get_string("save_error")
-                        self.gui.custom_signal.infoUpdated.emit()
+                        self.gui.infoUpdated.emit()
 
             with open("config.json", "w", encoding="utf-8") as cfg_file:
                 json.dump(config, cfg_file, ensure_ascii=False, indent=4)
@@ -214,7 +214,7 @@ class Core(object):
             logging.error("Failed to save config: %s", repr(error))
             if gui_emit:
                 self.gui.current_info = self.gui.lang_manager.get_string("save_error")
-                self.gui.custom_signal.infoUpdated.emit()
+                self.gui.infoUpdated.emit()
 
     def save_statistics(self):
         """Saves the settings to a config file."""
@@ -280,7 +280,7 @@ class RequestsThread(QThread):
             frame = {"str": "Error", "emoji": ""}
             logging.error("Failed to parse frame: %s", repr(e))
             self.gui.current_info = "%s: %s" % (self.gui.lang_manager.get_string("parse_error"), repr(e))
-            self.gui.custom_signal.infoUpdated.emit()
+            self.gui.infoUpdated.emit()
 
     def auth(self, method):
         """Creates and returns a header for discord API using current token."""
@@ -322,7 +322,7 @@ class RequestsThread(QThread):
                             except Exception as error:
                                 logging.error("Failed to update Discord RPC: %s", repr(error))
                                 self.gui.current_info = "RPC update failed:\n%s" % repr(error)
-                                self.gui.custom_signal.infoUpdated.emit()
+                                self.gui.infoUpdated.emit()
 
                 req = requests.patch(API_URL + "/users/@me/settings",
                                      headers=self.auth("patch"), data=p_params,
@@ -336,32 +336,32 @@ class RequestsThread(QThread):
                         item['rpc'] = 'RPC'
 
                     self.gui.current_frame = ' | '.join([e for e in reversed(list(item.values())) if e])
-                    self.gui.custom_signal.frameUpdated.emit()
+                    self.gui.frameUpdated.emit()
                     if self.gui.current_info != "":
                         self.gui.current_info = ""
-                        self.gui.custom_signal.infoUpdated.emit()
+                        self.gui.infoUpdated.emit()
                 elif req.status_code == 429:  # Never create request overflow
                     logging.error("Discord XRate exceeded. Sleeping for 30 to let Discord rest.")
                     self.gui.current_info = self.gui.lang_manager.get_string("xrate_exceeded")
-                    self.gui.custom_signal.infoUpdated.emit()
+                    self.gui.infoUpdated.emit()
                     if self.core.config["tray_notifications"]:
                         self.gui.tray_icon.showMessage("Discord Animated Status", self.gui.lang_manager.get_string("xrate_exceeded"), self.gui.icon, msecs=1000)
                     self.sleep(30)
                 elif req.status_code == 401:
                     logging.error("Failed to authorize in Discord. Thread stopping...")
-                    self.gui.custom_signal.authFailed.emit()
+                    self.gui.authFailed.emit()
                     return
                 elif req.status_code == 400:
                     logging.error("Bad Request (400)")
                     self.gui.current_info = "Bad Request (400)"
-                    self.gui.custom_signal.infoUpdated.emit()
+                    self.gui.infoUpdated.emit()
                     self.gui.current_frame = frame['str']
-                    self.gui.custom_signal.frameUpdated.emit()
+                    self.gui.frameUpdated.emit()
 
             except requests.exceptions.RequestException as e:
                 logging.error("A request error occured: %s", repr(e))
                 self.gui.current_info = "%s: %s" % (self.gui.lang_manager.get_string("error"), repr(e))
-                self.gui.custom_signal.infoUpdated.emit()
+                self.gui.infoUpdated.emit()
                 if self.core.config["tray_notifications"]:
                     self.gui.tray_icon.showMessage("Discord Animated Status", "%s: %s" % (self.gui.lang_manager.get_string("error"), repr(e)), self.gui.icon, msecs=1000)
 

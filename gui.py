@@ -38,6 +38,10 @@ socks5://user:pass@ip:port
 class App(QWidget):
     """Main application class."""
 
+    frameUpdated = pyqtSignal()
+    infoUpdated = pyqtSignal()
+    authFailed = pyqtSignal()
+
     def __init__(self, launch_args):
         super().__init__()
         self.core = Core(self)
@@ -346,10 +350,9 @@ class App(QWidget):
         self.run_stop_animated_status.triggered.connect(self.run_animation)
         self.exit_the_program.triggered.connect(self.close)
 
-        self.custom_signal = custom_signal()
-        self.custom_signal.frameUpdated.connect(self.update_frame_screen)
-        self.custom_signal.infoUpdated.connect(self.update_info_screen)
-        self.custom_signal.authFailed.connect(self.on_auth_failed)
+        self.frameUpdated.connect(self.update_frame_screen)
+        self.infoUpdated.connect(self.update_info_screen)
+        self.authFailed.connect(self.on_auth_failed)
 
         self.requests_handler.finished.connect(self.on_requests_thread_stop)
 
@@ -1623,13 +1626,6 @@ class App(QWidget):
         if self.core.config['rpc_client_id'] and not self.core.config['disable_rpc']:
             if self.core.rpc:
                 self.core.disconnect_rpc()
-
-class custom_signal(QObject):
-    """Custom PyQT signal class."""
-    frameUpdated = pyqtSignal()
-    infoUpdated = pyqtSignal()
-    threadStopped = pyqtSignal()
-    authFailed = pyqtSignal()
 
 def apply_style(app):
     """Apply dark discord theme to application."""
