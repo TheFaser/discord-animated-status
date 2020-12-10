@@ -5,7 +5,8 @@ External libraries used:
 * PyQt5
 * requests
 * pypresence
- 
+* psutil
+
 Will not work with bot tokens since the core edits your profile's settings (basically repeating the `settings` request with special parameters for status editing).
 You'll need to get your own user authorization token in order for it to work.
 
