@@ -1,6 +1,6 @@
 import string
 
-VERSION_M = "2.1.0"
+VERSION_M = "2.1.1 beta"
 AUTHORS_M = ["https://github.com/eternalfrenzy", "https://github.com/RinkLinky"]
 CREDITS_M = {
     "eternalfrenzy": "-Request mining and collecting data\n-Core of the status changer\n-English translation",
