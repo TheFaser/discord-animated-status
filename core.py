@@ -12,6 +12,7 @@ import pypresence
 from PyQt5.QtCore import QThread, QObject, pyqtSignal, pyqtSlot, QTimer, Qt
 
 from constants import API_URL
+from variables_parser import VariablesParser
 
 class Core(object):
     """Back-End class."""
@@ -258,32 +259,7 @@ class RequestsThread(QThread):
         super().__init__()
         self.core = core
         self.gui = gui
-
-    def parse_frame(self, frame):
-        """Parse animated status frame."""
-        try:
-            frame["str"] = frame["str"].replace("#curtime#", datetime.strftime(datetime.now(), "%H:%M"))
-            frame["str"] = frame["str"].replace("#timenow#", datetime.strftime(datetime.now(), "%H:%M"))
-
-            if re.search('(#name#|#nick#|#id#|#discriminator#)', frame['str']):
-                userdata = requests.get(API_URL + "/users/@me", headers=self.auth("get"),
-                                        proxies=self.core.config.get('proxies')).json(encoding="utf-8")
-                frame["str"] = frame["str"].replace("#name#", userdata["username"])
-                frame["str"] = frame["str"].replace("#nick#", userdata["username"])
-                frame["str"] = frame["str"].replace("#id#", userdata["id"])
-                frame["str"] = frame["str"].replace("#discriminator#", userdata["discriminator"])
-
-            if re.search('(#servcount#|#guildcount#)', frame['str']):
-                guildcount = len(requests.get(API_URL + "/users/@me/guilds", headers=self.auth("get"),
-                                             proxies=self.core.config.get('proxies')).json(encoding="utf-8"))
-                frame["str"] = frame["str"].replace("#servcount#", str(guildcount))
-                frame["str"] = frame["str"].replace("#guildcount#", str(guildcount))
-
-        except (KeyError, TypeError, requests.exceptions.RequestException) as e:
-            frame = {"str": "Error", "emoji": ""}
-            logging.error("Failed to parse frame: %s", repr(e))
-            self.gui.current_info = "%s: %s" % (self.gui.lang_manager.get_string("parse_error"), repr(e))
-            self.gui.infoUpdated.emit()
+        self.variables_parser = VariablesParser(self)
 
     def auth(self, method):
         """Creates and returns a header for discord API using current token."""
@@ -309,7 +285,7 @@ class RequestsThread(QThread):
                     i = 0
                 frame = self.core.config["frames"][i].copy()
 
-            self.parse_frame(frame) # string variables parsing
+            self.variables_parser.parse_frame(frame) # string variables parsing
 
             p_params = json.dumps({"custom_status": {"text": frame.get("str"),
                                                      "emoji_id": frame.get('custom_emoji_id') if frame.get('custom_emoji_id') else None,
