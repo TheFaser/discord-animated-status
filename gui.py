@@ -61,7 +61,10 @@ class App(QWidget):
             except Exception as error:
                 logging.error('Failed to close RPC: %s', repr(error))
         scr = sys.executable
-        os.execl(scr, '"%s"' % scr, *sys.argv)
+        if sys.argv[0].endswith('.py'): # if the app launches as a script
+            os.execl(scr, '"%s"' % scr, sys.argv[0])
+        else: # if compiled by pyinstaller
+            os.execl(scr, '"%s"' % scr)
 
     def make_lang_callback(self, lang):
         """Method factory for menu bar language selection."""
@@ -1056,8 +1059,8 @@ class App(QWidget):
         def enable_autostart():
             try:
                 if sys.platform == 'win32':
-                    if sys.argv[0] == 'main.py': # if the app launches as a script
-                        link_args = 'main.py --minimize -r'
+                    if sys.argv[0].endswith('.py'): # if the app launches as a script
+                        link_args = '%s --minimize -r' % sys.argv[0]
                         link_icon_loc = (os.path.join(os.path.abspath(os.getcwd()), 'res/icon.ico'), 0)
                     else: # if compiled by pyinstaller
                         link_args = '--minimize -r' 

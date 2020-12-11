@@ -29,6 +29,7 @@ def entry():
     args_parser.add_argument('-r', '--run-animation', action='store_true', help='run status animation on launch')
 
     try:
+        logging.info('SYS arguments: %s', repr(sys.argv))
         launch_args = args_parser.parse_args()
         logging.info('Launch arguments: %s', launch_args.__dict__)
 
