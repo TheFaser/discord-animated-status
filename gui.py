@@ -62,9 +62,15 @@ class App(QWidget):
                 logging.error('Failed to close RPC: %s', repr(error))
         scr = sys.executable
         if sys.argv[0].endswith('.py'): # if the app launches as a script
-            os.execl(scr, '"%s"' % scr, sys.argv[0])
+            if sys.platform == 'win32':
+                os.execl(scr, '"%s"' % scr, sys.argv[0])
+            else:
+                os.execl(scr, scr, sys.argv[0])
         else: # if compiled by pyinstaller
-            os.execl(scr, '"%s"' % scr)
+            if sys.platform == 'win32':
+                os.execl(scr, '"%s"' % scr)
+            else:
+                os.execl(scr, scr)
 
     def make_lang_callback(self, lang):
         """Method factory for menu bar language selection."""
