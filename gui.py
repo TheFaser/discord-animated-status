@@ -199,18 +199,21 @@ class App(QWidget):
         self.menu_bar_settings_load.triggered.connect(self.reload_config)
         self.menu_bar_settings_save = QAction(self.lang_manager.get_string("save_config"), self)
         self.menu_bar_settings_save.triggered.connect(self.core.config_save)
-        self.menu_bar_settings_autostart_on_boot = QAction(self.lang_manager.get_string("autostart_on_boot"), self)
-        self.menu_bar_settings_autostart_on_boot.triggered.connect(self.autostart_on_boot)
-        self.menu_bar_settings_proxy = QAction(self.lang_manager.get_string("proxy"), self)
-        self.menu_bar_settings_proxy.triggered.connect(self.edit_proxy)
         self.menu_bar_settings_discord_rpc = QAction("Discord RPC", self)
         self.menu_bar_settings_discord_rpc.triggered.connect(self.default_discord_rpc_edit)
+        self.menu_bar_settings_proxy = QAction(self.lang_manager.get_string("proxy"), self)
+        self.menu_bar_settings_proxy.triggered.connect(self.edit_proxy)
+        self.menu_bar_settings_autostart_on_boot = QAction(self.lang_manager.get_string("autostart_on_boot"), self)
+        self.menu_bar_settings_autostart_on_boot.triggered.connect(self.autostart_on_boot)
+        self.menu_bar_settings_quit = QAction(self.lang_manager.get_string("quit"), self)
+        self.menu_bar_settings_quit.triggered.connect(self.close_app)
         self.menu_bar_settings.addAction(self.menu_bar_settings_token)
-        self.menu_bar_settings.addAction(self.menu_bar_settings_save)
         self.menu_bar_settings.addAction(self.menu_bar_settings_load)
-        self.menu_bar_settings.addAction(self.menu_bar_settings_autostart_on_boot)
-        self.menu_bar_settings.addAction(self.menu_bar_settings_proxy)
+        self.menu_bar_settings.addAction(self.menu_bar_settings_save)
         self.menu_bar_settings.addAction(self.menu_bar_settings_discord_rpc)
+        self.menu_bar_settings.addAction(self.menu_bar_settings_proxy)
+        self.menu_bar_settings.addAction(self.menu_bar_settings_autostart_on_boot)
+        self.menu_bar_settings.addAction(self.menu_bar_settings_quit)
 
         self.menu_bar_language = self.menu_bar.addMenu(self.lang_manager.get_string("language"))
         for lang in self.lang_manager.supported_langs:  # For each supported language
@@ -336,6 +339,7 @@ class App(QWidget):
 
         # + END MAIN SECTION
 
+        self.to_close_app = False
         self.current_info = ""
 
         self.stop_btn.setEnabled(False)
@@ -356,7 +360,7 @@ class App(QWidget):
         self.tray_icon.messageClicked.connect(self.maximize_window)
 
         self.run_stop_animated_status.triggered.connect(self.run_animation)
-        self.exit_the_program.triggered.connect(self.close)
+        self.exit_the_program.triggered.connect(self.close_app)
 
         self.frameUpdated.connect(self.update_frame_screen)
         self.infoUpdated.connect(self.update_info_screen)
@@ -1615,11 +1619,6 @@ class App(QWidget):
                                        self.lang_manager.get_string("auth_failed"),
                                        self.icon, msecs=1000)
 
-    def changeEvent(self, event):
-        if self.windowState() == Qt.WindowMinimized:
-            self.hide()
-            logging.info('Program window has been minimized.')
-
     def tray_click_checking(self, reason):
         if reason == QSystemTrayIcon.Trigger:
             self.maximize_window()
@@ -1634,11 +1633,23 @@ class App(QWidget):
         qtRectangle.moveCenter(centerPoint)
         self.move(qtRectangle.topLeft())
 
-    def closeEvent(self, event):
+    def close_app(self):
         self.tray_icon.hide()
         if self.core.config['rpc_client_id'] and not self.core.config['disable_rpc']:
             if self.core.rpc:
                 self.core.disconnect_rpc()
+        self.to_close_app = True # ignore config check in closeEvent
+        self.close()
+
+    def closeEvent(self, event):
+        if self.to_close_app:
+            event.accept()
+            return
+
+        if self.core.config['minimize_on_close_button']:
+            event.ignore()
+            self.hide()
+            logging.info('Program window has been minimized.')
 
 def apply_style(app):
     """Apply dark discord theme to application."""
