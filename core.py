@@ -80,8 +80,8 @@ class Core(object):
         if 'language' not in self.config:
             self.config['language'] = "en"
 
-        if "minimize_on_close_button" not in self.config:
-            self.config["minimize_on_close_button"] = True
+        if "minimize_to_tray_on_close" not in self.config:
+            self.config["minimize_to_tray_on_close"] = True
 
         if "tray_notifications" not in self.config:
             self.config["tray_notifications"] = True

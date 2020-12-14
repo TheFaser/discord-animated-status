@@ -1646,7 +1646,7 @@ class App(QWidget):
             event.accept()
             return
 
-        if self.core.config['minimize_on_close_button']:
+        if self.core.config['minimize_to_tray_on_close']:
             event.ignore()
             self.hide()
             logging.info('Program window has been minimized.')
