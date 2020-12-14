@@ -102,6 +102,11 @@ class Core(object):
         elif not isinstance(self.config['default_rpc'], dict):
             logging.critical('Invalid config: default_rpc must be a dict')
 
+        if "rpc_reconnect_delay" not in self.config:
+            self.config["rpc_reconnect_delay"] = 60
+        elif not isinstance(self.config['rpc_reconnect_delay'], int):
+            logging.critical('Invalid config: rpc_reconnect_delay must be a integer')
+
         if "proxies" not in self.config:
             self.config["proxies"] = {"https": ""}
         elif not isinstance(self.config["proxies"], dict):
@@ -131,9 +136,10 @@ class Core(object):
         logging.info('Config applied.')
 
     def connect_rpc(self):
-        self.rpc = RichPresenceCustom(self.config['rpc_client_id'], self.string_constants)
+        self.rpc = RichPresenceCustom(self.config['rpc_client_id'], self.string_constants, self.config['rpc_reconnect_delay'])
         self.rpc_thread.start()
         self.rpc.moveToThread(self.rpc_thread)
+        self.rpc.reconnect_timer.moveToThread(self.rpc_thread)
         self.rpc.start_connect.connect(self.rpc.run)
         self.rpc.start_connect.emit()
         self.clock.start()
@@ -152,6 +158,7 @@ class Core(object):
 
         self.rpc_thread.quit()
         self.rpc.deleteLater()
+        self.rpc.reconnect_timer.deleteLater()
 
     def on_clock_tick(self):
         if self.rpc.error:
@@ -167,6 +174,7 @@ class Core(object):
                     self.rpc.update_rpc(self.config['default_rpc'])
                 except Exception as error:
                     logging.error("Failed to update Discord RPC: %s", repr(error))
+                    self.rpc.error = RichPresenceConnectError(error)
 
     def load_old_config(self):
         logging.info('Reading config.old file...')
@@ -352,16 +360,23 @@ class RequestsThread(QThread):
 
 class RichPresenceCustom(pypresence.Presence, QObject):
 
-    __slots__ = 'is_connected', 'error', 'string_constants',
+    __slots__ = 'is_connected', 'error', 'string_constants', \
+                'reconnect_delay', 'reconnect_timer',
 
     start_connect = pyqtSignal()
 
-    def __init__(self, client_id, string_constants):
+    def __init__(self, client_id, string_constants, reconnect_delay):
         QObject.__init__(self)
         pypresence.Presence.__init__(self, client_id=client_id, loop=asyncio.new_event_loop())
         self.is_connected = False
         self.error = None
         self.string_constants = string_constants
+        self.reconnect_delay = reconnect_delay
+
+        self.reconnect_timer = QTimer()
+        self.reconnect_timer.setTimerType(Qt.PreciseTimer)
+        self.reconnect_timer.setInterval(self.reconnect_delay * 1000)
+        self.reconnect_timer.timeout.connect(self.run)
 
     @pyqtSlot()
     def run(self):
@@ -370,16 +385,13 @@ class RichPresenceCustom(pypresence.Presence, QObject):
             self.connect()
             self.is_connected = True
             self.error = None
+            self.reconnect_timer.stop()
 
         except Exception as error:
             logging.error('Failed to connect RPC: %s', repr(error))
-            if self.error:
-                self.error = RichPresenceConnectError(error, is_critical=True)
-            else:
-                self.error = RichPresenceConnectError(error)
-                logging.info('20 seconds pause to try connect RPC...')
-                self.thread().sleep(20)
-                return self.run()
+            self.error = RichPresenceConnectError(error)
+            logging.info('%s seconds pause to try connect RPC...', self.reconnect_delay)
+            self.reconnect_timer.start()
 
     def update_rpc(self, config):
         config = config.copy()
@@ -397,6 +409,9 @@ class RichPresenceCustom(pypresence.Presence, QObject):
             small_text=config['small_image_text'] if config['small_image_text'] else None)
 
         logging.info('Discord RPC updated.')
+
+    def set_error(self, base_exception, is_critical=False):
+        self.error = RichPresenceConnectError(base_exception, is_critical)
 
     def _convert_variables(self, string):
         if not string:
@@ -427,6 +442,9 @@ class RichPresenceConnectError(Exception):
         if isinstance(self.base_exception, pypresence.InvalidPipe):
             self.message = 'Running discord app not found'
             self.lang_string = 'discord_not_found'
+        elif isinstance(self.base_exception, pypresence.InvalidID):
+            self.message = 'Application Client ID is invalid'
+            self.lang_string = 'invalid_client_id'
         else:
             self.message = 'An error has occured'
             self.lang_string = 'rpc_error_see_log'

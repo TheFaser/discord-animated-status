@@ -1355,6 +1355,7 @@ class App(QWidget):
                     self.core.rpc.update_rpc(self.core.config['default_rpc'])
                 except Exception as error:
                     logging.error("Failed to update Discord RPC: %s", repr(error))
+                    self.core.rpc.set_error(error)
                     error_window = QMessageBox()
                     error_window.setWindowTitle(self.lang_manager.get_string("error"))
                     error_window.setWindowIcon(self.icon)
