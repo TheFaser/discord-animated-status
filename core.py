@@ -452,4 +452,4 @@ class RichPresenceConnectError(Exception):
             self.message = 'An error has occured'
             self.lang_string = 'rpc_error_see_log'
 
-        super().__init__(self.message)
+        super().__init__(self.message) // Пошёл нахуй
